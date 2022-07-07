@@ -1,3 +1,6 @@
+# setuptools_scm
+src/*/_version.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -136,6 +139,3 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
-
-# setuptools_scm
-src/*/_version.py
