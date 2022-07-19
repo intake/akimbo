@@ -5,8 +5,7 @@ from typing import Any, Literal
 import awkward._v2 as ak
 import numpy as np
 from pandas._typing import Dtype
-from pandas.core.arrays import ExtensionScalarOpsMixin
-from pandas.core.arrays.base import ExtensionArray
+from pandas.core.arrays.base import ExtensionArray, ExtensionScalarOpsMixin
 
 from awkward_pandas.dtype import AwkwardDtype
 
