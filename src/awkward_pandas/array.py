@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
-from pandas.api.extensions import ExtensionArray
+from pandas.core.arrays.base import ExtensionArray
 
 from awkward_pandas.dtype import AwkwardDtype
 
 
-class AwkwardSeries(ExtensionArray):
+class AwkwardExtensionArray(ExtensionArray):
     _dtype: AwkwardDtype
 
     @property
