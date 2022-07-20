@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Literal
+import operator
 
 import awkward._v2 as ak
 import numpy as np
@@ -16,32 +17,37 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
 
     def __init__(self, data: Any) -> None:
         self._dtype = AwkwardDtype()
-        if isinstance(data, ak.Array):
+        if isinstance(data, type(self)):
+            self._data = data._data
+        elif isinstance(data, ak.Array):
             self._data = data
+        else:
+            self._data = ak.from_iter(data)
 
     @classmethod
     def _from_sequence(cls, scalars, *, dtype=None, copy=False):
-        raise NotImplementedError
+        return cls(scalars)
 
     @classmethod
     def _from_factorized(cls, values, original):
         return cls(values)
 
     def __getitem__(self, item):
-        raise NotImplementedError
+        new = operator.getitem(self._data, *item)
+        return type(self)(new)
 
     def __setitem__(self, key, value):
         raise NotImplementedError
 
     def __len__(self) -> int:
-        return len(self.data)
+        return len(self._data)
 
     def __eq__(self, other):
         if isinstance(other, AwkwardExtensionArray):
-            return type(self)(self.data == other.data)
+            return type(self)(self._data == other._data)
         return self == type(self)(other)
 
-    @property
+    @prperty
     def dtype(self):
         return self._dtype
 
@@ -50,21 +56,17 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
         return self._data.layout.nbytes
 
     def isna(self):
-        return np.array(ak.is_none(self.data))
+        return np.array(ak.is_none(self._data))
 
     def take(self, indices, *, allow_fill=False, fill_value=None):
-        raise NotImplementedError
+        return self[indices]
 
     def copy(self):
-        type(self)(ak.copy(self.data))
+        type(self)(ak.copy(self._data))
 
     @classmethod
     def _concat_same_type(cls, to_concat):
         raise NotImplementedError
-
-    @property
-    def data(self) -> ak.Array:
-        return self._data
 
     @property
     def ndim(self) -> Literal[1]:
@@ -77,10 +79,16 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
     def __arrow_array__(self):
         import pyarrow as pa
 
-        return pa.chunked_array(ak.to_arrow(self.data))
+        return pa.chunked_array(ak.to_arrow(self._data))
 
     def __repr__(self) -> str:
-        return f"pandas: {self.data.__repr__()}"
+        return f"pandas: {self._data.__repr__()}"
+
+    def __str__(self) -> str:
+        return str(self._data)
+
+    def tolist(self) -> list:
+        return self._data.tolist()
 
 
 AwkwardExtensionArray._add_arithmetic_ops()
