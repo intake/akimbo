@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
-
-from typing import Any, Literal
 import operator
+from collections.abc import Iterable
+from typing import Any, Literal
 
 import awkward._v2 as ak
 import numpy as np
 import pandas as pd
-from pandas._typing import Dtype
 from pandas.core.arrays.base import ExtensionArray, ExtensionScalarOpsMixin
 
 from awkward_pandas.dtype import AwkwardDtype
