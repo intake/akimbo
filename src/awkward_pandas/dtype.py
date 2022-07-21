@@ -7,7 +7,7 @@ import pandas as pd
 from pandas.core.dtypes.base import ExtensionDtype, register_extension_dtype
 
 if TYPE_CHECKING:
-    from awkward_pandas.array import AwkwardExtensionArray
+    from awkward_pandas.array import AwkwardArray
 
 
 @register_extension_dtype
@@ -33,15 +33,15 @@ class AwkwardDtype(ExtensionDtype):
         return cls()
 
     @classmethod
-    def construct_array_type(cls) -> type[AwkwardExtensionArray]:
-        from awkward_pandas.array import AwkwardExtensionArray
+    def construct_array_type(cls) -> type[AwkwardArray]:
+        from awkward_pandas.array import AwkwardArray
 
-        return AwkwardExtensionArray
+        return AwkwardArray
 
-    def __from_arrow__(self, data) -> AwkwardExtensionArray:
-        from awkward_pandas.array import AwkwardExtensionArray
+    def __from_arrow__(self, data) -> AwkwardArray:
+        from awkward_pandas.array import AwkwardArray
 
-        return AwkwardExtensionArray(ak.from_arrow(data))
+        return AwkwardArray(ak.from_arrow(data))
 
     def __repr__(self) -> str:
         return "<AwkwardDtype>"

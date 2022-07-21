@@ -12,7 +12,7 @@ from pandas.core.arrays.base import ExtensionArray, ExtensionScalarOpsMixin
 from awkward_pandas.dtype import AwkwardDtype
 
 
-class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
+class AwkwardArray(ExtensionArray, ExtensionScalarOpsMixin):
     _dtype: AwkwardDtype
     _data: ak.Array
 
@@ -51,7 +51,7 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
         return len(self._data)
 
     def __eq__(self, other):
-        if isinstance(other, AwkwardExtensionArray):
+        if isinstance(other, AwkwardArray):
             return type(self)(self._data == other._data)
         return self == type(self)(other)
 
@@ -102,5 +102,5 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
         return self._data.tolist()
 
 
-AwkwardExtensionArray._add_arithmetic_ops()
-AwkwardExtensionArray._add_comparison_ops()
+AwkwardArray._add_arithmetic_ops()
+AwkwardArray._add_comparison_ops()
