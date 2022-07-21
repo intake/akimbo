@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 from typing import Any, Literal
 import operator
 
@@ -17,12 +19,19 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
 
     def __init__(self, data: Any) -> None:
         self._dtype = AwkwardDtype()
+
         if isinstance(data, type(self)):
             self._data = data._data
         elif isinstance(data, ak.Array):
             self._data = data
-        else:
+        elif isinstance(data, str):
+            self._data = ak.from_json(data)
+        elif isinstance(data, Iterable):
             self._data = ak.from_iter(data)
+        elif data is None:
+            self._data = ak.Array([])
+        else:
+            pass
 
     @classmethod
     def _from_sequence(cls, scalars, *, dtype=None, copy=False):
@@ -33,7 +42,7 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
         return cls(values)
 
     def __getitem__(self, item):
-        new = operator.getitem(self._data, *item)
+        new = operator.getitem(self._data, item)
         return type(self)(new)
 
     def __setitem__(self, key, value):
@@ -47,7 +56,7 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
             return type(self)(self._data == other._data)
         return self == type(self)(other)
 
-    @prperty
+    @property
     def dtype(self):
         return self._dtype
 
@@ -75,6 +84,9 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
     @property
     def shape(self):
         return (len(self._data),)
+
+    def __array__(self):
+        return np.asarray(self._data.tolist(), dtype=object)
 
     def __arrow_array__(self):
         import pyarrow as pa
