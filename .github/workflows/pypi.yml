@@ -1,0 +1,34 @@
+name: PyPI Tests
+
+on:
+  push:
+    paths-ignore:
+    - '**.md'
+  pull_request:
+    paths-ignore:
+    - '**.md'
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.8", "3.9", "3.10"]
+    runs-on: ${{matrix.platform}}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: setup Python ${{matrix.python-version}}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{matrix.python-version}}
+    - name: install
+      run: |
+        pip install pip setuptools wheel -U
+        pip install --ignore-installed -q --no-cache-dir -e .[complete]
+        pip list
+    - name: test
+      run: |
+        python -m pytest

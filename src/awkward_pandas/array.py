@@ -7,6 +7,7 @@ import operator
 
 import awkward._v2 as ak
 import numpy as np
+import pandas as pd
 from pandas._typing import Dtype
 from pandas.core.arrays.base import ExtensionArray, ExtensionScalarOpsMixin
 
@@ -27,7 +28,7 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
         elif isinstance(data, str):
             self._data = ak.from_json(data)
         elif isinstance(data, Iterable):
-            self._data = ak.from_iter(data)
+            self._data = ak.from_iter(None if a is pd.NA else a for a in data)
         elif data is None:
             self._data = ak.Array([])
         else:
