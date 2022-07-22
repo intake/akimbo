@@ -30,7 +30,8 @@ class AwkwardArray(ExtensionArray, ExtensionScalarOpsMixin):
         elif data is None:
             self._data = ak.Array([])
         else:
-            pass
+
+            self._data = None
 
     @classmethod
     def _from_sequence(cls, scalars, *, dtype=None, copy=False):
@@ -49,6 +50,10 @@ class AwkwardArray(ExtensionArray, ExtensionScalarOpsMixin):
 
     def __len__(self) -> int:
         return len(self._data)
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self._data[i]
 
     def __eq__(self, other):
         if isinstance(other, AwkwardArray):
@@ -100,6 +105,18 @@ class AwkwardArray(ExtensionArray, ExtensionScalarOpsMixin):
 
     def tolist(self) -> list:
         return self._data.tolist()
+
+    # @classmethod
+    # def _create_method(cls, op, coerce_to_dtype=True, result_dtype=None):
+    #     def f(self, *args, **kwargs):
+    #         at = getattr(ak.Array, op_name)
+    #         return cls(at(self, *args, **kwargs))
+    #
+    #     op_name = f"__{op.__name__}__"
+    #     return getattr(ak.Array, op_name)
+    #
+    def __array_ufunc__(self, *inputs, **kwargs):
+        return type(self)(self._data.__array_ufunc__(*inputs, **kwargs))
 
 
 AwkwardArray._add_arithmetic_ops()
