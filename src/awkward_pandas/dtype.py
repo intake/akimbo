@@ -12,21 +12,29 @@ if TYPE_CHECKING:
 
 @register_extension_dtype
 class AwkwardDtype(ExtensionDtype):
-    _name: str = "awkward"
-    _kind: str = "O"
-    _na_value = pd.NA
-
     @property
     def name(self) -> str:
-        return self._name
+        return "awkward"
 
     @property
     def type(self) -> type[ak.Array]:
         return ak.Array
 
     @property
-    def na_value(self):
-        return self._na_value
+    def kind(self) -> str:
+        return "O"
+
+    @property
+    def na_value(self) -> object:
+        return pd.NA
+
+    @property
+    def _is_numeric(self) -> bool:
+        return True
+
+    @property
+    def _is_boolean(self) -> bool:
+        return True
 
     @classmethod
     def construct_from_string(cls, string: str) -> AwkwardDtype:
