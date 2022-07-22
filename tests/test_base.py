@@ -18,7 +18,7 @@ def test_dunder():
     assert s2.tolist() == [[7, 3, 4], [5, 6]]
 
 
-def test_dunder():
+def test_select():
     s = pd.Series(awkward_pandas.AwkwardArray([[6, 2, 3], [4, 5]]))
     s2 = s[0]
     assert s2.dtype == "awkward"
