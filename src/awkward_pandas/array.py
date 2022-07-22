@@ -43,6 +43,7 @@ class AwkwardArray(ExtensionArray, ExtensionScalarOpsMixin):
 
     def __getitem__(self, item):
         new = operator.getitem(self._data, item)
+
         return type(self)(new)
 
     def __setitem__(self, key, value):
