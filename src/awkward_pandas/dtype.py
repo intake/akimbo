@@ -53,11 +53,3 @@ class AwkwardDtype(ExtensionDtype):
 
     def __repr__(self) -> str:
         return "<AwkwardDtype>"
-
-    def __str__(self) -> str:
-        return self.name
-
-    def __eq__(self, other) -> bool:
-        if isinstance(other, str):
-            return other == "awkward"
-        return isinstance(other, type(self))
