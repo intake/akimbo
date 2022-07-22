@@ -58,4 +58,6 @@ class AwkwardDtype(ExtensionDtype):
         return self.name
 
     def __eq__(self, other) -> bool:
+        if isinstance(other, str):
+            return other == "awkward"
         return isinstance(other, type(self))
