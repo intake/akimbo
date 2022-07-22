@@ -30,8 +30,7 @@ class AwkwardArray(ExtensionArray, ExtensionScalarOpsMixin):
         elif data is None:
             self._data = ak.Array([])
         else:
-
-            self._data = None
+            raise ValueError
 
     @classmethod
     def _from_sequence(cls, scalars, *, dtype=None, copy=False):
