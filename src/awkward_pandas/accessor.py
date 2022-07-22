@@ -1,16 +1,17 @@
 import functools
 import inspect
-import pandas as pd
+
 import awkward._v2 as ak
-from .array import AwkwardArray
-from .dtype import AwkwardDtype
+import pandas as pd
+
+from awkward_pandas.array import AwkwardArray
+from awkward_pandas.dtype import AwkwardDtype
 
 funcs = [n for n in dir(ak) if inspect.isfunction(getattr(ak, n))]
 
 
 @pd.api.extensions.register_series_accessor("ak")
 class AwkwardAccessor:
-
     def __init__(self, pandas_obj):
         if not self._validate(pandas_obj):
             raise AttributeError("ak accessor called on incompatible data")
@@ -22,7 +23,9 @@ class AwkwardAccessor:
         if self._arr is None:
             if isinstance(self._obj, AwkwardArray):
                 self._arr = self._obj
-            elif isinstance(self._obj.dtype, AwkwardDtype) and isinstance(self._obj, pd.Series):
+            elif isinstance(self._obj.dtype, AwkwardDtype) and isinstance(
+                self._obj, pd.Series
+            ):
                 # this is a pandas Series that contains an Awkward
                 self._arr = self._obj.values
             elif isinstance(self._obj.dtype, AwkwardDtype):
@@ -53,8 +56,12 @@ class AwkwardAccessor:
 
         @functools.wraps(func)
         def f(*others, **kwargs):
-            others = [other._data if isinstance(getattr(other, "_data", None), ak.Array) else other
-                      for other in others]
+            others = [
+                other._data
+                if isinstance(getattr(other, "_data", None), ak.Array)
+                else other
+                for other in others
+            ]
             ak_arr = func(self.arr._data, *others, **kwargs)
             # TODO: special case to carry over index and name information where output
             #  is similar to input, e.g., has same length
