@@ -1,0 +1,13 @@
+[run]
+omit =
+     src/awkward_pandas/_version.py
+source =
+     src/awkward_pandas
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if TYPE_CHECKING:
+    except ImportError:
+    NotImplementedError
+    _ipython_key_completions_
