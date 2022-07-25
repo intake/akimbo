@@ -75,7 +75,7 @@ class AwkwardArray(ExtensionArray, ExtensionScalarOpsMixin):
         return self[indices]
 
     def copy(self):
-        type(self)(ak.copy(self._data))
+        return type(self)(ak.copy(self._data))
 
     @classmethod
     def _concat_same_type(cls, to_concat):
