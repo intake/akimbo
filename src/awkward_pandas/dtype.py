@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import awkward._v2 as ak
 import pandas as pd
@@ -38,7 +38,10 @@ class AwkwardDtype(ExtensionDtype):
 
     @classmethod
     def construct_from_string(cls, string: str) -> AwkwardDtype:
-        return cls()
+        if string == cls().name:
+            return cls()
+        else:
+            raise TypeError(f"Cannot construct a {cls} from '{string}'")
 
     @classmethod
     def construct_array_type(cls) -> type[AwkwardArray]:
@@ -46,7 +49,7 @@ class AwkwardDtype(ExtensionDtype):
 
         return AwkwardArray
 
-    def __from_arrow__(self, data) -> AwkwardArray:
+    def __from_arrow__(self, data: Any) -> AwkwardArray:
         from awkward_pandas.array import AwkwardArray
 
         return AwkwardArray(ak.from_arrow(data))
