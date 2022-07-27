@@ -1,20 +1,22 @@
-import awkward._v2 as ak
 import pandas as pd
 import pytest
 
-from awkward_pandas import AwkwardArray
+from awkward_pandas import AwkwardDtype
 
 
 @pytest.fixture
-def int_raw_array():
-    return ak.Array([[1, 2, 3], [4, 5], [6]])
+def dtype():
+    """Fixture overriding function in pandas/tests/extension/conftest.py"""
+    return AwkwardDtype()
 
 
 @pytest.fixture
-def int_array(int_raw_array: ak.Array) -> AwkwardArray:
-    return AwkwardArray(int_raw_array)
+def data(dtype):
+    """Fixture overriding function in pandas/tests/extension/conftest.py"""
+    return pd.array([[1, 2, 3], [4, 5]] * 50, dtype=dtype)
 
 
 @pytest.fixture
-def int_series(int_array: AwkwardArray) -> pd.Series:
-    return pd.Series(int_array)
+def data_missing(data):
+    """Fixture overriding function in pandas/tests/extension/conftest.py"""
+    return type(data)._from_sequence([None, data[0]])
