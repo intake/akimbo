@@ -7,7 +7,7 @@ import numpy as np
 from pandas.core.dtypes.base import ExtensionDtype, register_extension_dtype
 
 if TYPE_CHECKING:
-    from awkward_pandas.array import AwkwardArray
+    from awkward_pandas.array import AwkwardExtensionArray
 
 
 @register_extension_dtype
@@ -63,15 +63,15 @@ class AwkwardDtype(ExtensionDtype):
             raise TypeError(f"Cannot construct a '{cls.__name__}' from '{string}'")
 
     @classmethod
-    def construct_array_type(cls) -> type[AwkwardArray]:
-        from awkward_pandas.array import AwkwardArray
+    def construct_array_type(cls) -> type[AwkwardExtensionArray]:
+        from awkward_pandas.array import AwkwardExtensionArray
 
-        return AwkwardArray
+        return AwkwardExtensionArray
 
-    def __from_arrow__(self, data: Any) -> AwkwardArray:
-        from awkward_pandas.array import AwkwardArray
+    def __from_arrow__(self, data: Any) -> AwkwardExtensionArray:
+        from awkward_pandas.array import AwkwardExtensionArray
 
-        return AwkwardArray(ak.from_arrow(data))
+        return AwkwardExtensionArray(ak.from_arrow(data))
 
     def __repr__(self) -> str:
         return "<AwkwardDtype>"

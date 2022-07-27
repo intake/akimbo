@@ -7,13 +7,17 @@ from typing import Any, Literal
 import awkward._v2 as ak
 import numpy as np
 import pandas as pd
-from pandas.core.arrays.base import ExtensionArray, ExtensionScalarOpsMixin, set_function_name
+from pandas.core.arrays.base import (
+    ExtensionArray,
+    ExtensionScalarOpsMixin,
+    set_function_name,
+)
 from pandas.core.dtypes.generic import ABCSeries, ABCIndex, ABCDataFrame
 
 from awkward_pandas.dtype import AwkwardDtype
 
 
-class AwkwardArray(ExtensionArray, ExtensionScalarOpsMixin):
+class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
     _dtype: AwkwardDtype
     _data: ak.Array
 
@@ -43,7 +47,7 @@ class AwkwardArray(ExtensionArray, ExtensionScalarOpsMixin):
 
     def __getitem__(self, item):
         new = operator.getitem(self._data, item)
-
+        print(new)
         return type(self)(new)
 
     def __setitem__(self, key, value):
@@ -58,7 +62,6 @@ class AwkwardArray(ExtensionArray, ExtensionScalarOpsMixin):
 
     @classmethod
     def _create_method(cls, op, coerce_to_dtype=True, result_dtype=None):
-
         def _binop(self, other):
             if isinstance(other, (ABCSeries, ABCIndex, ABCDataFrame)):
                 # rely on pandas to unbox and dispatch to us
@@ -104,19 +107,22 @@ class AwkwardArray(ExtensionArray, ExtensionScalarOpsMixin):
     def shape(self):
         return (len(self._data),)
 
-    def __array__(self):
-        return np.asarray(self._data.tolist(), dtype=object)
+    def __array__(self, dtype=None):
+        dtype = np.dtype("O") if dtype is None else np.dtype(dtype)
+        if dtype != np.dtype(object):
+            raise ValueError("Only object dtype can be used.")
+        return np.asarray(self._data.tolist(), dtype=dtype)
 
     def __arrow_array__(self):
         import pyarrow as pa
 
         return pa.chunked_array(ak.to_arrow(self._data))
 
-    def __repr__(self) -> str:
-        return f"pandas: {self._data.__repr__()}"
+    # def __repr__(self) -> str:
+    #     return f"pandas: {self._data.__repr__()}"
 
-    def __str__(self) -> str:
-        return str(self._data)
+    # def __str__(self) -> str:
+    #     return str(self._data)
 
     def tolist(self) -> list:
         return self._data.tolist()
@@ -129,10 +135,10 @@ class AwkwardArray(ExtensionArray, ExtensionScalarOpsMixin):
     #
     #     op_name = f"__{op.__name__}__"
     #     return getattr(ak.Array, op_name)
-    #
+
     def __array_ufunc__(self, *inputs, **kwargs):
         return type(self)(self._data.__array_ufunc__(*inputs, **kwargs))
 
 
-AwkwardArray._add_arithmetic_ops()
-AwkwardArray._add_comparison_ops()
+AwkwardExtensionArray._add_arithmetic_ops()
+AwkwardExtensionArray._add_comparison_ops()

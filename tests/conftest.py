@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -20,3 +21,8 @@ def data(dtype):
 def data_missing(data):
     """Fixture overriding function in pandas/tests/extension/conftest.py"""
     return type(data)._from_sequence([None, data[0]])
+
+
+@pytest.fixture
+def na_value():
+    return np.nan

@@ -4,7 +4,7 @@ import inspect
 import awkward._v2 as ak
 import pandas as pd
 
-from awkward_pandas.array import AwkwardArray
+from awkward_pandas.array import AwkwardExtensionArray
 from awkward_pandas.dtype import AwkwardDtype
 
 funcs = [n for n in dir(ak) if inspect.isfunction(getattr(ak, n))]
@@ -21,7 +21,7 @@ class AwkwardAccessor:
     @property
     def arr(self):
         if self._arr is None:
-            if isinstance(self._obj, AwkwardArray):
+            if isinstance(self._obj, AwkwardExtensionArray):
                 self._arr = self._obj
             elif isinstance(self._obj.dtype, AwkwardDtype) and isinstance(
                 self._obj, pd.Series
@@ -33,20 +33,22 @@ class AwkwardAccessor:
                 raise NotImplementedError
             else:
                 # this recreates series, possibly by iteration
-                self._arr = AwkwardArray(self._obj)
+                self._arr = AwkwardExtensionArray(self._obj)
         return self._arr
 
     @staticmethod
     def _validate(obj):
-        return isinstance(obj, AwkwardArray) or isinstance(obj.values, AwkwardArray)
+        return isinstance(obj, AwkwardExtensionArray) or isinstance(
+            obj.values, AwkwardExtensionArray
+        )
 
     def to_arrow(self):
         return self.arr._data.to_arrow()
 
     def cartesian(self, other, **kwargs):
-        if isinstance(other, AwkwardArray):
+        if isinstance(other, AwkwardExtensionArray):
             other = other._data
-        return AwkwardArray(ak.cartesian([self.arr._data, other], **kwargs))
+        return AwkwardExtensionArray(ak.cartesian([self.arr._data, other], **kwargs))
 
     def __getattr__(self, item):
         # replace with concrete implementations of all top-level ak functions
@@ -68,7 +70,7 @@ class AwkwardAccessor:
             if isinstance(ak_arr, ak.Array):
                 # TODO: perhaps special case here if the output can be represented
                 #  as a regular num/cupy array
-                return AwkwardArray(ak_arr)
+                return AwkwardExtensionArray(ak_arr)
             return ak_arr
 
         return f
