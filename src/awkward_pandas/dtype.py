@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 import awkward._v2 as ak
-import pandas as pd
+import numpy as np
 from pandas.core.dtypes.base import ExtensionDtype, register_extension_dtype
 
 if TYPE_CHECKING:
@@ -26,7 +26,7 @@ class AwkwardDtype(ExtensionDtype):
 
     @property
     def na_value(self) -> object:
-        return pd.NA
+        return np.nan
 
     @property
     def _is_numeric(self) -> bool:
@@ -38,10 +38,29 @@ class AwkwardDtype(ExtensionDtype):
 
     @classmethod
     def construct_from_string(cls, string: str) -> AwkwardDtype:
+        """Construct an instance from a string.
+
+        Parameters
+        ----------
+        string : str
+            Should be "awkward".
+
+        Returns
+        -------
+        AwkwardDtype
+            Instance of the dtype.
+
+        """
+
+        if not isinstance(string, str):
+            raise TypeError(
+                f"'construct_from_string' expects a string, got {type(string)}"
+            )
+
         if string == cls().name:
             return cls()
         else:
-            raise TypeError(f"Cannot construct a {cls} from '{string}'")
+            raise TypeError(f"Cannot construct a '{cls.__name__}' from '{string}'")
 
     @classmethod
     def construct_array_type(cls) -> type[AwkwardArray]:
