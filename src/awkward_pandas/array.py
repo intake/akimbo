@@ -46,6 +46,14 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
         return cls(scalars)
 
     @classmethod
+    def _empty(cls, shape, dtype):
+        if isinstance(shape, tuple) and len(shape) != 1:
+            raise ValueError
+        if isinstance(shape, tuple):
+            return cls([None] * shape[0])
+        return cls([None] * shape)
+
+    @classmethod
     def _from_factorized(cls, values, original):
         return cls(values)
 
