@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import operator
 from collections.abc import Iterable
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import awkward._v2 as ak
 import numpy as np
@@ -12,9 +12,12 @@ from pandas.core.arrays.base import (
     ExtensionScalarOpsMixin,
     set_function_name,
 )
-from pandas.core.dtypes.generic import ABCSeries, ABCIndex, ABCDataFrame
+from pandas.core.dtypes.generic import ABCDataFrame, ABCIndex, ABCSeries
 
 from awkward_pandas.dtype import AwkwardDtype
+
+if TYPE_CHECKING:
+    from numpy.typing import DTypeLike, NDArray
 
 
 class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
@@ -23,7 +26,6 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
 
     def __init__(self, data: Any) -> None:
         self._dtype = AwkwardDtype()
-
         if isinstance(data, type(self)):
             self._data = data._data
         elif isinstance(data, ak.Array):
@@ -39,6 +41,8 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
 
     @classmethod
     def _from_sequence(cls, scalars, *, dtype=None, copy=False):
+        if len(scalars) == 1 and isinstance(scalars[0], str):
+            return cls(scalars[0])
         return cls(scalars)
 
     @classmethod
@@ -47,8 +51,10 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
 
     def __getitem__(self, item):
         new = operator.getitem(self._data, item)
-        print(new)
-        return type(self)(new)
+        if isinstance(new, ak.Array):
+            return type(self)(new)
+        else:
+            return new
 
     def __setitem__(self, key, value):
         raise NotImplementedError
@@ -79,11 +85,11 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
         return getattr(ak, name)(self._data, **kwargs)
 
     @property
-    def dtype(self):
+    def dtype(self) -> AwkwardDtype:
         return self._dtype
 
     @property
-    def nbytes(self):
+    def nbytes(self) -> int:
         return self._data.layout.nbytes
 
     def isna(self):
@@ -104,11 +110,11 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
         return 1
 
     @property
-    def shape(self):
+    def shape(self) -> tuple[int]:
         return (len(self._data),)
 
-    def __array__(self, dtype=None):
-        dtype = np.dtype("O") if dtype is None else np.dtype(dtype)
+    def __array__(self, dtype: DTypeLike | None = None) -> NDArray:
+        dtype = np.dtype(object) if dtype is None else np.dtype(dtype)
         if dtype != np.dtype(object):
             raise ValueError("Only object dtype can be used.")
         return np.asarray(self._data.tolist(), dtype=dtype)

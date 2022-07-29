@@ -63,7 +63,7 @@ class AwkwardDtype(ExtensionDtype):
             raise TypeError(f"Cannot construct a '{cls.__name__}' from '{string}'")
 
     @classmethod
-    def construct_array_type(cls) -> type[AwkwardExtensionArray]:
+    def construct_array_type(cls) -> type[AwkwardExtensionArray]:  # type: ignore[valid-type]
         from awkward_pandas.array import AwkwardExtensionArray
 
         return AwkwardExtensionArray
