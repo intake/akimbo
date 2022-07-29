@@ -72,6 +72,9 @@ class AwkwardArray(ExtensionArray, ExtensionScalarOpsMixin):
         op_name = f"__{op.__name__}__"
         return set_function_name(_binop, op_name, cls)
 
+    def _reduce(self, name: str, *, skipna: bool = True, **kwargs):
+        return getattr(ak, name)(self._data, **kwargs)
+
     @property
     def dtype(self):
         return self._dtype
