@@ -7,7 +7,8 @@ from typing import Any, Literal
 import awkward._v2 as ak
 import numpy as np
 import pandas as pd
-from pandas.core.arrays.base import ExtensionArray, ExtensionScalarOpsMixin
+from pandas.core.arrays.base import ExtensionArray, ExtensionScalarOpsMixin, set_function_name
+from pandas.core.dtypes.generic import ABCSeries, ABCIndex, ABCDataFrame
 
 from awkward_pandas.dtype import AwkwardDtype
 
@@ -55,10 +56,67 @@ class AwkwardArray(ExtensionArray, ExtensionScalarOpsMixin):
         for i in range(len(self)):
             yield self._data[i]
 
+    @classmethod
+    def _create_method(cls, op, coerce_to_dtype=True, result_dtype=None):
+        """
+        A class method that returns a method that will correspond to an
+        operator for an ExtensionArray subclass, by dispatching to the
+        relevant operator defined on the individual elements of the
+        ExtensionArray.
+
+        Parameters
+        ----------
+        op : function
+            An operator that takes arguments op(a, b)
+        coerce_to_dtype : bool, default True
+            boolean indicating whether to attempt to convert
+            the result to the underlying ExtensionArray dtype.
+            If it's not possible to create a new ExtensionArray with the
+            values, an ndarray is returned instead.
+
+        Returns
+        -------
+        Callable[[Any, Any], Union[ndarray, ExtensionArray]]
+            A method that can be bound to a class. When used, the method
+            receives the two arguments, one of which is the instance of
+            this class, and should return an ExtensionArray or an ndarray.
+
+            Returning an ndarray may be necessary when the result of the
+            `op` cannot be stored in the ExtensionArray. The dtype of the
+            ndarray uses NumPy's normal inference rules.
+
+        Examples
+        --------
+        Given an ExtensionArray subclass called MyExtensionArray, use
+
+            __add__ = cls._create_method(operator.add)
+
+        in the class definition of MyExtensionArray to create the operator
+        for addition, that will be based on the operator implementation
+        of the underlying elements of the ExtensionArray
+        """
+
+        def _binop(self, other):
+            if isinstance(other, (ABCSeries, ABCIndex, ABCDataFrame)):
+                # rely on pandas to unbox and dispatch to us
+                return NotImplemented
+
+            lvalues = self
+            rvalues = cls(other)
+
+            return cls(op(lvalues._data, rvalues._data))
+
+        op_name = f"__{op.__name__}__"
+        return set_function_name(_binop, op_name, cls)
+
     def __eq__(self, other):
-        if isinstance(other, AwkwardArray):
-            return type(self)(self._data == other._data)
-        return self == type(self)(other)
+        # requires a bool output
+        if not isinstance(other, AwkwardArray):
+            other = type(self)(other)
+        out = np.equal(elf._data, other._data, axis=0)
+        import pdb
+        pdb.set_trace()
+        return type(self)(out)
 
     @property
     def dtype(self):

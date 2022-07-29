@@ -21,4 +21,4 @@ def test_astype_to_ak():
     s2 = s.astype("awkward")
     assert s2.dtype == "awkward"
     assert s2.tolist() == [[6, 2, 3], [4, 5]]
-    # assert (s2 == s).all()
+    assert (s2 == s).tolist() == [[True, True, True], [True, True]]
