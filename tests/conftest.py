@@ -2,6 +2,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
+# from pandas.conftest import *
+from pandas.tests.extension.conftest import *  # noqa
+
 from awkward_pandas import AwkwardDtype
 
 
