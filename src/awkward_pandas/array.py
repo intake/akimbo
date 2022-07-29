@@ -111,7 +111,7 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
 
     @classmethod
     def _concat_same_type(cls, to_concat):
-        raise NotImplementedError
+        return cls(ak.concatenate(to_concat))
 
     @property
     def ndim(self) -> Literal[1]:
