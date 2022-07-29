@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import awkward._v2 as ak
+import pandas as pd
 from pandas.tests.extension.base import BaseConstructorsTests, BaseDtypeTests
 from pandas.tests.extension.base.casting import BaseCastingTests  # noqa
 from pandas.tests.extension.base.dim2 import (  # noqa
@@ -45,7 +47,18 @@ class TestAwkwardConstructors(BaseConstructorsTests):
 
 
 class TestAwkwardBaseCastingTests(BaseCastingTests):
-    pass
+
+    # Overridden because list(AwkwardExtensionArray) will contain
+    # ak.Array as elements, not python objects.
+    def test_tolist(self, data):
+        result = pd.Series(data).tolist()
+        expected = data.tolist()
+        assert result == expected
+
+        result = list(pd.Series(data))
+        expected = list(data)
+        for res, exp in zip(result, expected):
+            assert ak.all(res == exp)
 
 
 class TestAwkwardBaseGetitemTests(BaseGetitemTests):
@@ -68,8 +81,9 @@ class TestAwkwardDim2CompatTests(Dim2CompatTests):
     pass
 
 
-class TestAwkwardNDArrayBacked2DTests(NDArrayBacked2DTests):
-    pass
+# Not compatible with awkward array
+# class TestAwkwardNDArrayBacked2DTests(NDArrayBacked2DTests):
+#     pass
 
 
 class TestAwkwardBaseParsingTests(BaseParsingTests):
@@ -117,7 +131,10 @@ class TestAwkwardBaseNumericReduceTests(BaseNumericReduceTests):
 
 
 class TestAwkwardBaseReshapingTests(BaseReshapingTests):
-    pass
+    def test_ravel(self, data):
+        result = data.ravel()
+        assert type(result) == type(data)
+        result._data is data._data
 
 
 # class TestAwkwardBaseSetitemTests(BaseSetitemTests):

@@ -41,8 +41,6 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
 
     @classmethod
     def _from_sequence(cls, scalars, *, dtype=None, copy=False):
-        if len(scalars) == 1 and isinstance(scalars[0], str):
-            return cls(scalars[0])
         return cls(scalars)
 
     @classmethod
@@ -58,11 +56,13 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
         return cls(values)
 
     def __getitem__(self, item):
-        new = operator.getitem(self._data, item)
-        if isinstance(new, ak.Array):
+        if isinstance(item, int):
+            return operator.getitem(self._data, item)
+        elif isinstance(item, slice):
+            new = operator.getitem(self._data, item)
             return type(self)(new)
         else:
-            return new
+            raise ValueError(f"bad item passed to getitem: {type(item)}")
 
     def __setitem__(self, key, value):
         raise NotImplementedError
@@ -89,7 +89,7 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
         op_name = f"__{op.__name__}__"
         return set_function_name(_binop, op_name, cls)
 
-    def _reduce(self, name: str, *, skipna: bool = True, **kwargs):
+    def _reduce(self, name: str, *, skipna: bool = True, axis=None, **kwargs):
         return getattr(ak, name)(self._data, **kwargs)
 
     @property
@@ -141,18 +141,12 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
     def tolist(self) -> list:
         return self._data.tolist()
 
-    # @classmethod
-    # def _create_method(cls, op, coerce_to_dtype=True, result_dtype=None):
-    #     def f(self, *args, **kwargs):
-    #         at = getattr(ak.Array, op_name)
-    #         return cls(at(self, *args, **kwargs))
-    #
-    #     op_name = f"__{op.__name__}__"
-    #     return getattr(ak.Array, op_name)
-
     def __array_ufunc__(self, *inputs, **kwargs):
         return type(self)(self._data.__array_ufunc__(*inputs, **kwargs))
 
 
 AwkwardExtensionArray._add_arithmetic_ops()
 AwkwardExtensionArray._add_comparison_ops()
+
+for k in ["mean", "var", "std", "sum", "prod"]:
+    setattr(AwkwardExtensionArray, k, getattr(ak, k))
