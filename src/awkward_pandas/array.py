@@ -58,7 +58,7 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
     def __getitem__(self, item):
         if isinstance(item, int):
             return operator.getitem(self._data, item)
-        elif isinstance(item, slice):
+        elif isinstance(item, (slice, np.ndarray, ak.Array)):
             new = operator.getitem(self._data, item)
             return type(self)(new)
         else:
