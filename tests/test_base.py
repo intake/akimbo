@@ -1,3 +1,4 @@
+import awkward._v2 as ak
 import pandas as pd
 
 import awkward_pandas
@@ -6,8 +7,7 @@ import awkward_pandas
 def test_select():
     s = pd.Series(awkward_pandas.AwkwardExtensionArray([[6, 2, 3], [4, 5]]))
     s2 = s[0]
-    assert s2.dtype == "awkward"
-    assert isinstance(s2, awkward_pandas.AwkwardExtensionArray)
+    assert isinstance(s2, ak.Array)
     assert s2.tolist() == [6, 2, 3]
 
     s2 = s[0:1]
