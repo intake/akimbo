@@ -16,6 +16,7 @@ addopts = [
     "--strict-config",
 ]
 log_cli_level = "DEBUG"
+# markers = ["slow", "network", "db"]
 
 [tool.isort]
 profile = "black"
