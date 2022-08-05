@@ -37,7 +37,7 @@ class AwkwardAccessor:
         return self._arr
 
     def __getitem__(self, *items):
-        return pd.Series(AwkwardArray(self.arr._data.__getitem__(*items)))
+        return pd.Series(AwkwardExtensionArray(self.arr._data.__getitem__(*items)))
 
     def to_column(self):
         data = self.arr._data
@@ -46,15 +46,20 @@ class AwkwardAccessor:
         if data.layout.parameter("__array__") == "string":
             from pandas.core.arrays.string_arrow import ArrowStringArray
             import pyarrow
+
             return pd.Series(
-                ArrowStringArray(ak.to_arrow(data, extensionarray=False, string_to32=True))
+                ArrowStringArray(
+                    ak.to_arrow(data, extensionarray=False, string_to32=True)
+                )
             )
         else:
             return pd.Series(ak.to_numpy(data))
 
     @staticmethod
     def _validate(obj):
-        return isinstance(obj, (AwkwardArray, ak.Array, ak.Record)) or isinstance(obj.values, AwkwardArray)
+        return isinstance(
+            obj, (AwkwardExtensionArray, ak.Array, ak.Record)
+        ) or isinstance(obj.values, AwkwardExtensionArray)
 
     def to_arrow(self):
         return self.arr._data.to_arrow()
@@ -90,6 +95,8 @@ class AwkwardAccessor:
         return f
 
     def __dir__(self):
-        return [_ for _ in (dir(ak)) if not _.startswith(("_", "ak_")) and not _[0].isupper()] + [
-            "to_arrow", "to_column", "catesian"
-        ]
+        return [
+            _
+            for _ in (dir(ak))
+            if not _.startswith(("_", "ak_")) and not _[0].isupper()
+        ] + ["to_arrow", "to_column", "catesian"]
