@@ -5,7 +5,7 @@ import awkward_pandas
 
 
 def test_len():
-    s = pd.Series(awkward_pandas.AwkwardArray([[6, 2, 3], [4, 5]]))
+    s = pd.Series(awkward_pandas.AwkwardExtensionArray([[6, 2, 3], [4, 5]]))
     assert s.ak.count() == 5
     s2 = s.ak.count(axis=1)
     assert s2.tolist() == [3, 2]

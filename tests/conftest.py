@@ -1,5 +1,9 @@
+import numpy as np
 import pandas as pd
 import pytest
+
+# from pandas.conftest import *
+from pandas.tests.extension.conftest import *  # noqa
 
 from awkward_pandas import AwkwardDtype
 
@@ -20,3 +24,19 @@ def data(dtype):
 def data_missing(data):
     """Fixture overriding function in pandas/tests/extension/conftest.py"""
     return type(data)._from_sequence([None, data[0]])
+
+
+@pytest.fixture(params=["data", "data_missing"])
+def all_data(request, data, data_missing):
+    """Parametrized fixture returning 'data' or 'data_missing' integer arrays.
+    Used to test dtype conversion with and without missing values.
+    """
+    if request.param == "data":
+        return data
+    elif request.param == "data_missing":
+        return data_missing
+
+
+@pytest.fixture
+def na_value():
+    return np.nan
