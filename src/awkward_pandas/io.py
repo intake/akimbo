@@ -4,5 +4,5 @@ import awkward_pandas
 import pandas as pd
 
 def read_parquet(url, **kwargs):
-    ds = ak.from_parquet(url, **kargs)
+    ds = ak.from_parquet(url, **kwargs)
     return pd.Series(awkward_pandas.AwkwardArray(ds))
