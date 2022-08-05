@@ -15,3 +15,10 @@ def test_no_access():
     s = pd.Series([1, 2])
     with pytest.raises(Exception):
         s.ak.count()
+
+
+def test_getitem():
+    s = pd.Series(awkward_pandas.AwkwardArray([[6, 2, 3], [4, 5]]))
+    s2 = s.ak[:, :1]
+    assert s.__class__ == s2.__class__
+    assert s2.tolist() == [[6], [4]]

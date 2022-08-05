@@ -36,9 +36,12 @@ class AwkwardAccessor:
                 self._arr = AwkwardArray(self._obj)
         return self._arr
 
+    def __getitem__(self, *items):
+        return pd.Series(AwkwardArray(self.arr._data.__getitem__(*items)))
+
     @staticmethod
     def _validate(obj):
-        return isinstance(obj, AwkwardArray) or isinstance(obj.values, AwkwardArray)
+        return isinstance(obj, (AwkwardArray, ak.Array, ak.Record)) or isinstance(obj.values, AwkwardArray)
 
     def to_arrow(self):
         return self.arr._data.to_arrow()
