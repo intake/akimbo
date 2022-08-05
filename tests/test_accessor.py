@@ -38,3 +38,8 @@ def test_to_column():
     with pytest.raises(ValueError):
         s.ak.to_column()
 
+
+def test_dir():
+    s = pd.Series(awkward_pandas.AwkwardArray([6, 2, 3]), name="test")
+    assert "sum" in dir(s.ak)
+    assert "Array" not in dir(s.ak)

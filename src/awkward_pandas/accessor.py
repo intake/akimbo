@@ -88,3 +88,8 @@ class AwkwardAccessor:
             return ak_arr
 
         return f
+
+    def __dir__(self):
+        return [_ for _ in (dir(ak)) if not _.startswith(("_", "ak_")) and not _[0].isupper()] + [
+            "to_arrow", "to_column", "catesian"
+        ]
