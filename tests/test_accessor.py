@@ -20,7 +20,8 @@ def test_no_access():
 def test_getitem():
     s = pd.Series(awkward_pandas.AwkwardArray([[6, 2, 3], [4, 5]]))
     s2 = s.ak[:, :1]
-    assert s.__class__ == s2.__class__
+    assert isinstance(s2, pd.Series)
+    assert s2.dtype == "awkward"
     assert s2.tolist() == [[6], [4]]
 
 
