@@ -71,17 +71,16 @@ class AwkwardAccessor:
             out[s.name] = s
         return pd.DataFrame(out)
 
-
     @staticmethod
     def _validate(obj):
         return isinstance(
             obj, (AwkwardExtensionArray, ak.Array, ak.Record)
         ) or isinstance(obj.values, AwkwardExtensionArray)
 
-    #def to_arrow(self):
+    # def to_arrow(self):
     #    return self.arr._data.to_arrow()
 
-    #def cartesian(self, other, **kwargs):
+    # def cartesian(self, other, **kwargs):
     #    if isinstance(other, AwkwardExtensionArray):
     #        other = other._data
     #    return AwkwardExtensionArray(ak.cartesian([self.arr._data, other], **kwargs))
