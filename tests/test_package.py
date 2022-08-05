@@ -45,6 +45,24 @@ class TestAwkwardConstructors(BaseConstructorsTests):
     def test_series_constructor_scalar_with_index(self, data, dtype):
         assert True
 
+    # Overridden because pd.DataFrame(list(AwkwardExtensionArray))
+    # won't work.
+    def test_from_dtype(self, data):
+        # construct from our dtype & string dtype
+        dtype = data.dtype
+
+        expected = pd.Series(data)
+        result = pd.Series(list(data), dtype=dtype)
+        self.assert_series_equal(result, expected)
+
+        result = pd.Series(list(data), dtype=str(dtype))
+        self.assert_series_equal(result, expected)
+
+        # this is the test that breaks the upstream version
+        # expected = pd.DataFrame(data).astype(dtype)
+        # result = pd.DataFrame(list(data), dtype=dtype)
+        # self.assert_frame_equal(result, expected)
+
 
 class TestAwkwardBaseCastingTests(BaseCastingTests):
 
