@@ -37,7 +37,8 @@ class AwkwardAccessor:
         return self._arr
 
     def __getitem__(self, *items):
-        return pd.Series(AwkwardExtensionArray(self.arr._data.__getitem__(*items)))
+        ds = self.arr._data.__getitem__(*items)
+        return pd.Series(AwkwardExtensionArray(ds))
 
     def to_column(self):
         data = self.arr._data
@@ -55,19 +56,35 @@ class AwkwardAccessor:
         else:
             return pd.Series(ak.to_numpy(data))
 
+    def to_columns(self, cull=True):
+        s = self._obj
+        fields = self.arr._data.fields
+        out = {}
+        for field in fields:
+            try:
+                out[field] = s.ak[field].ak.to_column()
+            except Exception as e:
+                pass
+        if cull:
+            out[s.name] = s.ak[[_ for _ in fields if _ not in out]]
+        else:
+            out[s.name] = s
+        return pd.DataFrame(out)
+
+
     @staticmethod
     def _validate(obj):
         return isinstance(
             obj, (AwkwardExtensionArray, ak.Array, ak.Record)
         ) or isinstance(obj.values, AwkwardExtensionArray)
 
-    def to_arrow(self):
-        return self.arr._data.to_arrow()
+    #def to_arrow(self):
+    #    return self.arr._data.to_arrow()
 
-    def cartesian(self, other, **kwargs):
-        if isinstance(other, AwkwardExtensionArray):
-            other = other._data
-        return AwkwardExtensionArray(ak.cartesian([self.arr._data, other], **kwargs))
+    #def cartesian(self, other, **kwargs):
+    #    if isinstance(other, AwkwardExtensionArray):
+    #        other = other._data
+    #    return AwkwardExtensionArray(ak.cartesian([self.arr._data, other], **kwargs))
 
     def __getattr__(self, item):
         # replace with concrete implementations of all top-level ak functions
@@ -99,4 +116,4 @@ class AwkwardAccessor:
             _
             for _ in (dir(ak))
             if not _.startswith(("_", "ak_")) and not _[0].isupper()
-        ] + ["to_arrow", "to_column", "catesian"]
+        ] + ["to_column"]

@@ -4,6 +4,9 @@ import awkward_pandas
 import pandas as pd
 
 
-def read_parquet(url, **kwargs):
+def read_parquet(url, extract=True, **kwargs):
     ds = ak.from_parquet(url, **kwargs)
-    return pd.Series(awkward_pandas.AwkwardExtensionArray(ds))
+    s = pd.Series(awkward_pandas.AwkwardExtensionArray(ds))
+    if extract is False:
+        return s
+    return s.ak.to_columns(cull=True)

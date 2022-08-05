@@ -30,6 +30,8 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
             self._data = data._data
         elif isinstance(data, ak.Array):
             self._data = data
+        elif isinstance(data, dict):
+            self._data = ak.Array(data)
         elif isinstance(data, str):
             self._data = ak.from_json(data)
         elif isinstance(data, Iterable):
