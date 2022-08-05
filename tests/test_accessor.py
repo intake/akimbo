@@ -43,3 +43,5 @@ def test_dir():
     s = pd.Series(awkward_pandas.AwkwardArray([6, 2, 3]), name="test")
     assert "sum" in dir(s.ak)
     assert "Array" not in dir(s.ak)
+    assert "ak_num" not in dir(s.ak)
+    assert "_util" not in dir(s.ak)
