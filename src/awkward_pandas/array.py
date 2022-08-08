@@ -152,3 +152,13 @@ AwkwardExtensionArray._add_comparison_ops()
 
 for k in ["mean", "var", "std", "sum", "prod"]:
     setattr(AwkwardExtensionArray, k, getattr(ak, k))
+
+
+def merge(dataframe):
+    out = {}
+    for c in dataframe.columns:
+        if dataframe[c].dtype == "awkward":
+            out[c] = dataframe[c].values._data
+        else:
+            out[c] = dataframe[c].values
+    return pd.Series(AwkwardExtensionArray(ak.Array(out)))
