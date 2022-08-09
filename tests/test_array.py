@@ -1,8 +1,6 @@
 import pandas as pd
 
-import awkward._v2 as ak
-
-from awkward_pandas import merge
+from awkward_pandas import merge, AwkwardExtensionArray
 
 
 def test_merge_no_ak():
@@ -20,6 +18,16 @@ def test_merge_no_ak():
     assert arr["c"].tolist() == ["hay", "ho", "hi"]
     assert arr["d"].tolist() == [[1, 2, 3], None, []]
 
-# def test_merge_one_ak:
+
+def test_merge_one_ak():
+    df = pd.DataFrame({'a': [1, 2, 3]})
+    df["b"] = pd.Series(AwkwardExtensionArray([[1, 2, 3], [5], [6, 7]]))
+    s = merge(df, name='test')
+    assert s.name == "test"
+    assert s.dtype == "awkward"
+    assert len(s) == 3
+    arr = s.values._data
+    assert arr.fields == ["a", "b"]
+    assert arr["b"].tolist() == [[1, 2, 3], [5], [6, 7]]
 
 # def test_merge_all_ak:
