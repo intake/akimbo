@@ -154,11 +154,21 @@ for k in ["mean", "var", "std", "sum", "prod"]:
     setattr(AwkwardExtensionArray, k, getattr(ak, k))
 
 
-def merge(dataframe):
+def merge(dataframe, name=None):
+    """Create a single awkward series by merging the columns of a dataframe
+
+    Parameters
+    ----------
+    dataframe: pd.DataFrame
+        Containing columns of simple numpy type, object type (e.g., srtings, lists or dicts)
+        or existing awkward columns
+    name: str or None
+        Name of the output series
+    """
     out = {}
     for c in dataframe.columns:
-        if dataframe[c].dtype == "awkward":
+        if dataframe[c].dtype in ["awkward", "string[pyarrow]"]:
             out[c] = dataframe[c].values._data
         else:
             out[c] = dataframe[c].values
-    return pd.Series(AwkwardExtensionArray(ak.Array(out)))
+    return pd.Series(AwkwardExtensionArray(ak.Array(out)), name=name)
