@@ -84,9 +84,13 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
                 return NotImplemented
 
             lvalues = self
-            rvalues = cls(other)
-
-            return cls(op(lvalues._data, rvalues._data))
+            if isinstance(other, list) or (
+                isinstance(other, pd.Series) and other.dtype == "O"
+            ):
+                rvalues = cls(other)
+                return cls(op(lvalues._data, rvalues._data))
+            else:
+                return cls(op(lvalues._data, other))
 
         op_name = f"__{op.__name__}__"
         return set_function_name(_binop, op_name, cls)
@@ -125,20 +129,16 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
 
     def __array__(self, dtype: DTypeLike | None = None) -> NDArray:
         dtype = np.dtype(object) if dtype is None else np.dtype(dtype)
-        if dtype != np.dtype(object):
-            raise ValueError("Only object dtype can be used.")
-        return np.asarray(self._data.tolist(), dtype=dtype)
+
+        if dtype == np.dtype("O"):
+            return np.asarray(self._data.tolist(), dtype=dtype)
+
+        return np.asarray(self._data, dtype=dtype)
 
     def __arrow_array__(self):
         import pyarrow as pa
 
         return pa.chunked_array(ak.to_arrow(self._data))
-
-    # def __repr__(self) -> str:
-    #     return f"pandas: {self._data.__repr__()}"
-
-    # def __str__(self) -> str:
-    #     return str(self._data)
 
     def tolist(self) -> list:
         return self._data.tolist()
@@ -146,24 +146,45 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
     def __array_ufunc__(self, *inputs, **kwargs):
         return type(self)(self._data.__array_ufunc__(*inputs, **kwargs))
 
+    def max(self, **kwargs):
+        return ak.max(self._data, **kwargs)
+
+    def min(self, **kwargs):
+        return ak.min(self._data, **kwargs)
+
+    def mean(self, **kwargs):
+        return ak.mean(self._data, **kwargs)
+
+    def std(self, **kwargs):
+        return ak.std(self._data, **kwargs)
+
+    def sum(self, axis=None, **kwargs):
+        return ak.sum(self._data, axis=axis, **kwargs)
+
+    # def __repr__(self) -> str:
+    #     return f"pandas: {self._data.__repr__()}"
+
+    # def __str__(self) -> str:
+    #     return str(self._data)
+
 
 AwkwardExtensionArray._add_arithmetic_ops()
 AwkwardExtensionArray._add_comparison_ops()
 
-for k in ["mean", "var", "std", "sum", "prod"]:
-    setattr(AwkwardExtensionArray, k, getattr(ak, k))
+# for k in ["mean", "var", "std", "sum", "prod"]:
+#     setattr(AwkwardExtensionArray, k, getattr(ak, k))
 
 
 def merge(dataframe, name=None):
-    """Create a single awkward series by merging the columns of a dataframe
+    """Create a single awkward series by merging the columns of a dataframe.
 
     Parameters
     ----------
     dataframe: pd.DataFrame
-        Containing columns of simple numpy type, object type (e.g., srtings, lists or dicts)
-        or existing awkward columns
+        Containing columns of simple numpy type, object type (e.g.,
+        srtings, lists or dicts) or existing awkward columns.
     name: str or None
-        Name of the output series
+        Name of the output series.
     """
     out = {}
     for c in dataframe.columns:

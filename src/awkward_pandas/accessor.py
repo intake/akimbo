@@ -71,17 +71,16 @@ class AwkwardAccessor:
             out[s.name] = s
         return pd.DataFrame(out)
 
-
     @staticmethod
     def _validate(obj):
         return isinstance(
             obj, (AwkwardExtensionArray, ak.Array, ak.Record)
         ) or isinstance(obj.values, AwkwardExtensionArray)
 
-    #def to_arrow(self):
+    # def to_arrow(self):
     #    return self.arr._data.to_arrow()
 
-    #def cartesian(self, other, **kwargs):
+    # def cartesian(self, other, **kwargs):
     #    if isinstance(other, AwkwardExtensionArray):
     #        other = other._data
     #    return AwkwardExtensionArray(ak.cartesian([self.arr._data, other], **kwargs))
@@ -106,7 +105,7 @@ class AwkwardAccessor:
             if isinstance(ak_arr, ak.Array):
                 # TODO: perhaps special case here if the output can be represented
                 #  as a regular num/cupy array
-                return AwkwardExtensionArray(ak_arr)
+                return pd.Series(AwkwardExtensionArray(ak_arr), index=self._obj.index)
             return ak_arr
 
         return f
