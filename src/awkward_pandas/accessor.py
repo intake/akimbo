@@ -6,6 +6,7 @@ import pandas as pd
 
 from awkward_pandas.array import AwkwardExtensionArray
 from awkward_pandas.dtype import AwkwardDtype
+from awkward_pandas.strings import dir_str, get_func
 
 funcs = [n for n in dir(ak) if inspect.isfunction(getattr(ak, n))]
 
@@ -87,32 +88,71 @@ class AwkwardAccessor:
 
     def __getattr__(self, item):
         # replace with concrete implementations of all top-level ak functions
-        if item not in funcs:
+        if item not in dir(self):
             raise AttributeError
-        func = getattr(ak, item)
+        func = getattr(ak, item, None)
 
-        @functools.wraps(func)
-        def f(*others, **kwargs):
-            others = [
-                other._data
-                if isinstance(getattr(other, "_data", None), ak.Array)
-                else other
-                for other in others
-            ]
-            ak_arr = func(self.arr._data, *others, **kwargs)
-            # TODO: special case to carry over index and name information where output
-            #  is similar to input, e.g., has same length
-            if isinstance(ak_arr, ak.Array):
-                # TODO: perhaps special case here if the output can be represented
-                #  as a regular num/cupy array
-                return pd.Series(AwkwardExtensionArray(ak_arr), index=self._obj.index)
-            return ak_arr
+        if func:
+            @functools.wraps(func)
+            def f(*others, **kwargs):
+                others = [
+                    other._data
+                    if isinstance(getattr(other, "_data", None), ak.Array)
+                    else other
+                    for other in others
+                ]
+                ak_arr = func(self.arr._data, *others, **kwargs)
+                # TODO: special case to carry over index and name information where output
+                #  is similar to input, e.g., has same length
+                if isinstance(ak_arr, ak.Array):
+                    # TODO: perhaps special case here if the output can be represented
+                    #  as a regular num/cupy array
+                    return pd.Series(AwkwardExtensionArray(ak_arr), index=self._obj.index)
+                return ak_arr
+        elif self.arr._data.layout.parameters.get("__array__").endswith("string"):
+            func = get_func(item, utf8=self.arr._data.layout.parameters.get("__array__") == "string")
+
+            @functools.wraps(func)
+            def f(*others, **kwargs):
+                import pyarrow
+                # TODO: allow string[pyarrow] here
+                # TODO: attempt to coerce object dtype
+                others = [
+                    other._data
+                    if isinstance(getattr(other, "_data", None), ak.Array)
+                    else other
+                    for other in others
+                ]
+                arrow_arr = func(pyarrow.chunked_array([ak.to_arrow(self.arr._data, extensionarray=False,
+                                                                    string_to32=True,
+                                             bytestring_to32=True,
+                                             )]),
+                                 *[pyarrow.chunked_array([ak.to_arrow(_, extensionarray=False,    string_to32=True,
+                                               bytestring_to32=True,
+                                               )]) for _ in others], **kwargs)
+                # TODO: special case to carry over index and name information where output
+                #  is similar to input, e.g., has same length
+                ak_arr = ak.from_arrow(arrow_arr)
+                if isinstance(ak_arr, ak.Array):
+                    # TODO: perhaps special case here if the output can be represented
+                    #  as a regular num/cupy array
+
+                    return pd.Series(AwkwardExtensionArray(ak_arr), index=self._obj.index)
+                return ak_arr
+
 
         return f
 
     def __dir__(self):
+        if self.arr._data.layout.parameters.get("__array__") == "bytestring":
+            extra = dir_str(utf8=False)
+        elif self.arr._data.layout.parameters.get("__array__") == "string":
+            extra = dir_str(utf8=True)
+        else:
+            extra = []
         return [
             _
             for _ in (dir(ak))
             if not _.startswith(("_", "ak_")) and not _[0].isupper()
-        ] + ["to_column"]
+        ] + ["to_column"] + extra
+
