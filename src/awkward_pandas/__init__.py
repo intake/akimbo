@@ -6,9 +6,4 @@ from awkward_pandas.array import AwkwardExtensionArray, merge
 from awkward_pandas.dtype import AwkwardDtype
 from awkward_pandas.io import read_parquet
 
-__all__ = (
-    "AwkwardDtype",
-    "AwkwardExtensionArray",
-    "read_parquet",
-    "merge"
-)
+__all__ = ("AwkwardDtype", "AwkwardExtensionArray", "read_parquet", "merge")

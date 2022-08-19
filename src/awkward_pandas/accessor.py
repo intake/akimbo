@@ -6,6 +6,14 @@ import pandas as pd
 
 from awkward_pandas.array import AwkwardExtensionArray
 from awkward_pandas.dtype import AwkwardDtype
+from awkward_pandas.strings import (
+    all_bytes,
+    all_strings,
+    decode,
+    dir_str,
+    encode,
+    get_func,
+)
 
 funcs = [n for n in dir(ak) if inspect.isfunction(getattr(ak, n))]
 
@@ -44,9 +52,9 @@ class AwkwardAccessor:
         data = self.arr._data
         if data.ndim > 1:
             raise ValueError
+        # TODO: if all_strings(data) - accept ?str
         if data.layout.parameter("__array__") == "string":
             from pandas.core.arrays.string_arrow import ArrowStringArray
-            import pyarrow
 
             return pd.Series(
                 ArrowStringArray(
@@ -63,13 +71,19 @@ class AwkwardAccessor:
         for field in fields:
             try:
                 out[field] = s.ak[field].ak.to_column()
-            except Exception as e:
+            except Exception:
                 pass
         if cull:
             out[s.name] = s.ak[[_ for _ in fields if _ not in out]]
         else:
             out[s.name] = s
         return pd.DataFrame(out)
+
+    def encode(self, encoding="utf-8"):
+        return pd.Series(AwkwardExtensionArray(encode(self.arr._data)))
+
+    def decode(self, encoding="utf-8"):
+        return pd.Series(AwkwardExtensionArray(decode(self.arr._data)))
 
     @staticmethod
     def _validate(obj):
@@ -87,32 +101,99 @@ class AwkwardAccessor:
 
     def __getattr__(self, item):
         # replace with concrete implementations of all top-level ak functions
-        if item not in funcs:
+        if item not in dir(self):
             raise AttributeError
-        func = getattr(ak, item)
+        func = getattr(ak, item, None)
 
-        @functools.wraps(func)
-        def f(*others, **kwargs):
-            others = [
-                other._data
-                if isinstance(getattr(other, "_data", None), ak.Array)
-                else other
-                for other in others
-            ]
-            ak_arr = func(self.arr._data, *others, **kwargs)
-            # TODO: special case to carry over index and name information where output
-            #  is similar to input, e.g., has same length
-            if isinstance(ak_arr, ak.Array):
-                # TODO: perhaps special case here if the output can be represented
-                #  as a regular num/cupy array
-                return pd.Series(AwkwardExtensionArray(ak_arr), index=self._obj.index)
-            return ak_arr
+        utf8 = all_strings(self.arr._data.layout)
+        byte = all_bytes(self.arr._data.layout)
+        if func:
+
+            @functools.wraps(func)
+            def f(*others, **kwargs):
+                others = [
+                    other._data
+                    if isinstance(getattr(other, "_data", None), ak.Array)
+                    else other
+                    for other in others
+                ]
+                ak_arr = func(self.arr._data, *others, **kwargs)
+                # TODO: special case to carry over index and name information where output
+                #  is similar to input, e.g., has same length
+                if isinstance(ak_arr, ak.Array):
+                    # TODO: perhaps special case here if the output can be represented
+                    #  as a regular num/cupy array
+                    return pd.Series(
+                        AwkwardExtensionArray(ak_arr), index=self._obj.index
+                    )
+                return ak_arr
+
+        elif utf8 or byte:
+            func = get_func(item, utf8=utf8)
+            if func is None:
+                raise AttributeError
+
+            @functools.wraps(func)
+            def f(*args, **kwargs):
+                import pyarrow
+
+                if utf8:
+                    data = pyarrow.chunked_array(
+                        [
+                            ak.to_arrow(
+                                self.arr._data,
+                                extensionarray=False,
+                                string_to32=True,
+                                bytestring_to32=True,
+                            )
+                        ]
+                    )
+                else:
+                    data = pyarrow.chunked_array(
+                        [
+                            ak.to_arrow(
+                                self.decode().values._data,
+                                extensionarray=False,
+                                string_to32=True,
+                                bytestring_to32=True,
+                            )
+                        ]
+                    )
+
+                arrow_arr = func(data, *args, **kwargs)
+                # TODO: special case to carry over index and name information where output
+                #  is similar to input, e.g., has same length
+                ak_arr = ak.from_arrow(arrow_arr)
+                if all_strings(ak_arr.layout) and not utf8:
+                    # back to bytes-array
+                    ak_arr = encode(ak.Array(ak_arr.layout.content))
+                if isinstance(ak_arr, ak.Array):
+                    # TODO: perhaps special case here if the output can be represented
+                    #  as a regular num/cupy array
+
+                    return pd.Series(
+                        AwkwardExtensionArray(ak_arr), index=self._obj.index
+                    )
+                return ak_arr
+
+        else:
+            raise AttributeError
 
         return f
 
     def __dir__(self):
-        return [
-            _
-            for _ in (dir(ak))
-            if not _.startswith(("_", "ak_")) and not _[0].isupper()
-        ] + ["to_column"]
+        if self.arr._data.layout.parameters.get("__array__") == "bytestring":
+            extra = dir_str(utf8=False)
+        elif self.arr._data.layout.parameters.get("__array__") == "string":
+            extra = dir_str(utf8=True)
+        else:
+            extra = []
+        return (
+            [
+                _
+                for _ in (dir(ak))
+                if not _.startswith(("_", "ak_")) and not _[0].isupper()
+            ]
+            + ["to_column"]
+            + extra
+        )

@@ -41,16 +41,15 @@ def test_to_column():
 
 def test_to_columns():
     s = pd.Series(
-        awkward_pandas.AwkwardExtensionArray({
-            "num": [6, 2, 3],
-            "deep": [[0], [], None],
-            "text": ["hi", "ho", "hum"]
-        }), name="test"
+        awkward_pandas.AwkwardExtensionArray(
+            {"num": [6, 2, 3], "deep": [[0], [], None], "text": ["hi", "ho", "hum"]}
+        ),
+        name="test",
     )
     df = s.ak.to_columns()
     assert df.columns.tolist() == ["num", "text", "test"]
     assert df.num.tolist() == [6, 2, 3]
-    assert df.test.tolist() == [{'deep': [0]}, {'deep': []}, {'deep': None}]
+    assert df.test.tolist() == [{"deep": [0]}, {"deep": []}, {"deep": None}]
     assert df.text.tolist() == ["hi", "ho", "hum"]
 
     df = s.ak.to_columns(cull=False)
@@ -58,8 +57,6 @@ def test_to_columns():
     assert df.num.tolist() == [6, 2, 3]
     assert df.test[0].tolist() == {"num": 6, "deep": [0], "text": "hi"}
     assert df.text.tolist() == ["hi", "ho", "hum"]
-
-
 
 
 def test_dir():
