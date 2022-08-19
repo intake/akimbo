@@ -6,7 +6,14 @@ import pandas as pd
 
 from awkward_pandas.array import AwkwardExtensionArray
 from awkward_pandas.dtype import AwkwardDtype
-from awkward_pandas.strings import decode, dir_str, encode, get_func
+from awkward_pandas.strings import (
+    all_bytes,
+    all_strings,
+    decode,
+    dir_str,
+    encode,
+    get_func,
+)
 
 funcs = [n for n in dir(ak) if inspect.isfunction(getattr(ak, n))]
 
@@ -45,6 +52,7 @@ class AwkwardAccessor:
         data = self.arr._data
         if data.ndim > 1:
             raise ValueError
+        # TODO: if all_strings(data) - accept ?str
         if data.layout.parameter("__array__") == "string":
             from pandas.core.arrays.string_arrow import ArrowStringArray
 
@@ -97,6 +105,8 @@ class AwkwardAccessor:
             raise AttributeError
         func = getattr(ak, item, None)
 
+        utf8 = all_strings(self.arr._data.layout)
+        byte = all_bytes(self.arr._data.layout)
         if func:
 
             @functools.wraps(func)
@@ -118,8 +128,7 @@ class AwkwardAccessor:
                     )
                 return ak_arr
 
-        elif self.arr._data.layout.parameters.get("__array__").endswith("string"):
-            utf8 = self.arr._data.layout.parameters.get("__array__") == "string"
+        elif utf8 or byte:
             func = get_func(item, utf8=utf8)
             if func is None:
                 raise AttributeError
@@ -155,15 +164,9 @@ class AwkwardAccessor:
                 # TODO: special case to carry over index and name information where output
                 #  is similar to input, e.g., has same length
                 ak_arr = ak.from_arrow(arrow_arr)
-                if (
-                    ak_arr.layout.content.parameter("__array__") == "string"
-                    and not utf8
-                ):
+                if all_strings(ak_arr.layout) and not utf8:
                     # back to bytes-array
                     ak_arr = encode(ak.Array(ak_arr.layout.content))
-                if ak_arr.layout.parameter("__array__") == "string" and not utf8:
-                    # back to bytes-array
-                    ak_arr = encode(ak_arr)
                 if isinstance(ak_arr, ak.Array):
                     # TODO: perhaps special case here if the output can be represented
                     #  as a regular num/cupy array

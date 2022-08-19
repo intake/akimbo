@@ -26,3 +26,15 @@ def test_encode_decode():
     assert s2.tolist() == [_.encode() for _ in s.tolist()]
     s3 = s2.ak.decode()
     assert (s == s3).all()
+
+
+def test_split():
+    s = pd.Series(["hello world", "oio", ""], dtype="awkward")
+    s2 = s.ak.split()
+    assert s2.tolist() == [["hello", "world"], ["oio"], [""]]
+    s2 = s.ak.split("i")
+    assert s2.tolist() == [["hello world"], ["o", "o"], [""]]
+
+    s = pd.Series([b"hello world", b"oio", b""], dtype="awkward")
+    s2 = s.ak.split()
+    assert s2.tolist() == [[b"hello", b"world"], [b"oio"], [b""]]

@@ -50,6 +50,7 @@ def _make_string_methods(utf8=True):
             "match_substring_regex",
             "encode",
             "decode",
+            "split",
         }
 
 
@@ -72,6 +73,8 @@ def get_func(item, utf8=True):
         name = mapping[item]
         if callable(name):
             return name
+    elif item == "split":
+        return get_split(utf8)
     elif item in string_methods["binary"]:
         name = "binary_" + item
     elif item in string_methods["standard"]:
@@ -79,38 +82,73 @@ def get_func(item, utf8=True):
     return getattr(pyarrow.compute, name, None)
 
 
-def _encode(layout, continuation, **kwargs):
-    if layout.is_ListType and layout.parameter("__array__") == "string":
-        content = ak.with_parameter(
-            layout.content, "__array__", "byte", highlevel=False
-        )
-        out = ak.with_parameter(layout, "__array__", "bytestring", highlevel=False)
-        out._content = content  # the "out" Python object is a copy
-        return out
-    return layout
+def _encode(layout):
+    if layout.is_RecordType:
+        [_encode(_) for _ in layout._contents]
+    elif layout.is_ListType and layout.parameter("__array__") == "string":
+        layout._parameters["__array__"] = "bytestring"
+        layout.content._parameters["__array__"] = ("byte",)
+    elif layout.is_OptionType or layout.is_ListType:
+        _encode(layout.content)
 
 
 def encode(arr, encoding="utf-8"):
     if encoding.lower() not in ["utf-8", "utf8"]:
         raise NotImplementedError
-    return ak.Array(arr.layout.recursively_apply(_encode))
+    arr2 = ak.copy(arr)
+    _encode(arr2.layout)
+    return ak.Array(arr2)
 
 
-def _decode(layout, continuation, encoding="utf-8", **kwargs):
-    if layout.is_ListType and layout.parameter("__array__") == "bytestring":
-        content = ak.with_parameter(
-            layout.content, "__array__", "char", highlevel=False
-        )
-        out = ak.with_parameter(layout, "__array__", "string", highlevel=False)
-        out._content = content  # the "out" Python object is a copy
-        return out
-    return layout
+def _decode(layout):
+    if layout.is_RecordType:
+        [_decode(_) for _ in layout._contents]
+    elif layout.is_ListType and layout.parameter("__array__") == "bytestring":
+        layout._parameters["__array__"] = "string"
+        layout.content._parameters["__array__"] = ("char",)
+    elif layout.is_OptionType or layout.is_ListType:
+        _decode(layout.content)
 
 
 def decode(arr, encoding="utf-8"):
     if encoding.lower() not in ["utf-8", "utf8"]:
         raise NotImplementedError
-    return ak.Array(arr.layout.recursively_apply(_decode))
+    arr2 = ak.copy(arr)  # to be mutated on creation
+    _decode(arr2.layout)
+    return ak.Array(arr2)
+
+
+def all_strings(layout):
+    if layout.is_RecordType:
+        return all(all_strings(layout[field]) for field in layout.fields)
+    if layout.is_ListType or layout.is_OptionType:
+        if layout.parameter("__array__") == "string":
+            return True
+        return all_strings(layout.content)
+    return layout.parameter("__array__") == "string"
+
+
+def all_bytes(layout):
+    if layout.is_RecordType:
+        return all(all_strings(layout[field]) for field in layout.fields)
+    if layout.is_ListType or layout.is_OptionType:
+        if layout.parameter("__array__") == "bytestring":
+            return True
+        return all_strings(layout.content)
+    return layout.parameter("__array__") == "bytestring"
+
+
+def get_split(utf8=True):
+    import pyarrow.compute
+
+    def f(stuff, sep=""):
+        if sep:
+            return pyarrow.compute.split_pattern(stuff, sep)
+        if utf8:
+            return pyarrow.compute.utf8_split_whitespace(stuff)
+        return pyarrow.compute.ascii_split_whitespace(stuff)
+
+    return f
 
 
 mapping = {
