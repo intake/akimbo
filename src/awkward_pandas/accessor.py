@@ -6,7 +6,7 @@ import pandas as pd
 
 from awkward_pandas.array import AwkwardExtensionArray
 from awkward_pandas.dtype import AwkwardDtype
-from awkward_pandas.strings import dir_str, get_func
+from awkward_pandas.strings import dir_str, get_func, encode, decode
 
 funcs = [n for n in dir(ak) if inspect.isfunction(getattr(ak, n))]
 
@@ -72,6 +72,12 @@ class AwkwardAccessor:
             out[s.name] = s
         return pd.DataFrame(out)
 
+    def encode(self, encoding="utf-8"):
+        return pd.Series(AwkwardExtensionArray(encode(self.arr._data)))
+
+    def decode(self, encoding="utf-8"):
+        return pd.Series(AwkwardExtensionArray(decode(self.arr._data)))
+
     @staticmethod
     def _validate(obj):
         return isinstance(
@@ -110,36 +116,43 @@ class AwkwardAccessor:
                     return pd.Series(AwkwardExtensionArray(ak_arr), index=self._obj.index)
                 return ak_arr
         elif self.arr._data.layout.parameters.get("__array__").endswith("string"):
-            func = get_func(item, utf8=self.arr._data.layout.parameters.get("__array__") == "string")
+            utf8 = self.arr._data.layout.parameters.get("__array__") == "string"
+            func = get_func(item, utf8=utf8)
+            if func is None:
+                raise AttributeError
 
             @functools.wraps(func)
-            def f(*others, **kwargs):
+            def f(*args, **kwargs):
                 import pyarrow
-                # TODO: allow string[pyarrow] here
-                # TODO: attempt to coerce object dtype
-                others = [
-                    other._data
-                    if isinstance(getattr(other, "_data", None), ak.Array)
-                    else other
-                    for other in others
-                ]
-                arrow_arr = func(pyarrow.chunked_array([ak.to_arrow(self.arr._data, extensionarray=False,
-                                                                    string_to32=True,
-                                             bytestring_to32=True,
-                                             )]),
-                                 *[pyarrow.chunked_array([ak.to_arrow(_, extensionarray=False,    string_to32=True,
-                                               bytestring_to32=True,
-                                               )]) for _ in others], **kwargs)
+                if utf8:
+                    data = pyarrow.chunked_array([ak.to_arrow(self.arr._data, extensionarray=False,
+                                                              string_to32=True,
+                                                              bytestring_to32=True,
+                                                              )])
+                else:
+                    data = pyarrow.chunked_array([ak.to_arrow(self.decode().values._data, extensionarray=False,
+                                                              string_to32=True,
+                                                              bytestring_to32=True,
+                                                              )])
+
+                arrow_arr = func(data, *args, **kwargs)
                 # TODO: special case to carry over index and name information where output
                 #  is similar to input, e.g., has same length
                 ak_arr = ak.from_arrow(arrow_arr)
+                if ak_arr.layout.content.parameter("__array__") == "string" and not utf8:
+                    # back to bytes-array
+                    ak_arr = encode(ak.Array(ak_arr.layout.content))
+                if ak_arr.layout.parameter("__array__") == "string" and not utf8:
+                    # back to bytes-array
+                    ak_arr = encode(ak_arr)
                 if isinstance(ak_arr, ak.Array):
                     # TODO: perhaps special case here if the output can be represented
                     #  as a regular num/cupy array
 
                     return pd.Series(AwkwardExtensionArray(ak_arr), index=self._obj.index)
                 return ak_arr
-
+        else:
+            raise AttributeError
 
         return f
 
