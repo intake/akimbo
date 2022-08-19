@@ -1,16 +1,11 @@
-import pytest
-
 import pandas as pd
-
-import awkward_pandas
+import pytest
 
 
 @pytest.mark.parametrize("binary", [True, False])
-@pytest.mark.parametrize(
-    "method", ["upper", "capitalize", "isalpha"]
-)
+@pytest.mark.parametrize("method", ["upper", "capitalize", "isalpha"])
 def test_unary_methods(method, binary):
-    s = pd.Series(["hello world", "oi"], dtype='awkward')
+    s = pd.Series(["hello world", "oi"], dtype="awkward")
     if binary:
         s = s.ak.encode()
     out = getattr(s.ak, method)()
@@ -19,14 +14,14 @@ def test_unary_methods(method, binary):
 
 
 def test_with_argument():
-    s = pd.Series(["hello world", "oi"], dtype='awkward')
+    s = pd.Series(["hello world", "oi"], dtype="awkward")
     out = s.ak.startswith("hello")
     expected = [_.startswith("hello") for _ in s.tolist()]
     assert out.tolist() == expected
 
 
 def test_encode_decode():
-    s = pd.Series(["hello world", "oi"], dtype='awkward')
+    s = pd.Series(["hello world", "oi"], dtype="awkward")
     s2 = s.ak.encode()
     assert s2.tolist() == [_.encode() for _ in s.tolist()]
     s3 = s2.ak.decode()

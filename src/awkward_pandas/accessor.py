@@ -6,7 +6,7 @@ import pandas as pd
 
 from awkward_pandas.array import AwkwardExtensionArray
 from awkward_pandas.dtype import AwkwardDtype
-from awkward_pandas.strings import dir_str, get_func, encode, decode
+from awkward_pandas.strings import decode, dir_str, encode, get_func
 
 funcs = [n for n in dir(ak) if inspect.isfunction(getattr(ak, n))]
 
@@ -47,7 +47,6 @@ class AwkwardAccessor:
             raise ValueError
         if data.layout.parameter("__array__") == "string":
             from pandas.core.arrays.string_arrow import ArrowStringArray
-            import pyarrow
 
             return pd.Series(
                 ArrowStringArray(
@@ -64,7 +63,7 @@ class AwkwardAccessor:
         for field in fields:
             try:
                 out[field] = s.ak[field].ak.to_column()
-            except Exception as e:
+            except Exception:
                 pass
         if cull:
             out[s.name] = s.ak[[_ for _ in fields if _ not in out]]
@@ -99,6 +98,7 @@ class AwkwardAccessor:
         func = getattr(ak, item, None)
 
         if func:
+
             @functools.wraps(func)
             def f(*others, **kwargs):
                 others = [
@@ -113,8 +113,11 @@ class AwkwardAccessor:
                 if isinstance(ak_arr, ak.Array):
                     # TODO: perhaps special case here if the output can be represented
                     #  as a regular num/cupy array
-                    return pd.Series(AwkwardExtensionArray(ak_arr), index=self._obj.index)
+                    return pd.Series(
+                        AwkwardExtensionArray(ak_arr), index=self._obj.index
+                    )
                 return ak_arr
+
         elif self.arr._data.layout.parameters.get("__array__").endswith("string"):
             utf8 = self.arr._data.layout.parameters.get("__array__") == "string"
             func = get_func(item, utf8=utf8)
@@ -124,22 +127,38 @@ class AwkwardAccessor:
             @functools.wraps(func)
             def f(*args, **kwargs):
                 import pyarrow
+
                 if utf8:
-                    data = pyarrow.chunked_array([ak.to_arrow(self.arr._data, extensionarray=False,
-                                                              string_to32=True,
-                                                              bytestring_to32=True,
-                                                              )])
+                    data = pyarrow.chunked_array(
+                        [
+                            ak.to_arrow(
+                                self.arr._data,
+                                extensionarray=False,
+                                string_to32=True,
+                                bytestring_to32=True,
+                            )
+                        ]
+                    )
                 else:
-                    data = pyarrow.chunked_array([ak.to_arrow(self.decode().values._data, extensionarray=False,
-                                                              string_to32=True,
-                                                              bytestring_to32=True,
-                                                              )])
+                    data = pyarrow.chunked_array(
+                        [
+                            ak.to_arrow(
+                                self.decode().values._data,
+                                extensionarray=False,
+                                string_to32=True,
+                                bytestring_to32=True,
+                            )
+                        ]
+                    )
 
                 arrow_arr = func(data, *args, **kwargs)
                 # TODO: special case to carry over index and name information where output
                 #  is similar to input, e.g., has same length
                 ak_arr = ak.from_arrow(arrow_arr)
-                if ak_arr.layout.content.parameter("__array__") == "string" and not utf8:
+                if (
+                    ak_arr.layout.content.parameter("__array__") == "string"
+                    and not utf8
+                ):
                     # back to bytes-array
                     ak_arr = encode(ak.Array(ak_arr.layout.content))
                 if ak_arr.layout.parameter("__array__") == "string" and not utf8:
@@ -149,8 +168,11 @@ class AwkwardAccessor:
                     # TODO: perhaps special case here if the output can be represented
                     #  as a regular num/cupy array
 
-                    return pd.Series(AwkwardExtensionArray(ak_arr), index=self._obj.index)
+                    return pd.Series(
+                        AwkwardExtensionArray(ak_arr), index=self._obj.index
+                    )
                 return ak_arr
+
         else:
             raise AttributeError
 
@@ -163,9 +185,12 @@ class AwkwardAccessor:
             extra = dir_str(utf8=True)
         else:
             extra = []
-        return [
-            _
-            for _ in (dir(ak))
-            if not _.startswith(("_", "ak_")) and not _[0].isupper()
-        ] + ["to_column"] + extra
-
+        return (
+            [
+                _
+                for _ in (dir(ak))
+                if not _.startswith(("_", "ak_")) and not _[0].isupper()
+            ]
+            + ["to_column"]
+            + extra
+        )

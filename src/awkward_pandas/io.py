@@ -1,7 +1,7 @@
 import awkward._v2 as ak
-import awkward_pandas
-
 import pandas as pd
+
+import awkward_pandas
 
 
 def read_parquet(url, extract=True, **kwargs):

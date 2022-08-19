@@ -1,13 +1,18 @@
 import pandas as pd
 
-from awkward_pandas import merge, AwkwardExtensionArray
+from awkward_pandas import AwkwardExtensionArray, merge
 
 
 def test_merge_no_ak():
-    df = pd.DataFrame({'a': [1, 2, 3], "b": ["hay", "ho", "hi"],
-                       "c": pd.Series(["hay", "ho", "hi"], dtype="string[pyarrow]"),
-                       "d": [[1, 2, 3], None, []]})
-    s = merge(df, name='test')
+    df = pd.DataFrame(
+        {
+            "a": [1, 2, 3],
+            "b": ["hay", "ho", "hi"],
+            "c": pd.Series(["hay", "ho", "hi"], dtype="string[pyarrow]"),
+            "d": [[1, 2, 3], None, []],
+        }
+    )
+    s = merge(df, name="test")
     assert s.name == "test"
     assert s.dtype == "awkward"
     assert len(s) == 3
@@ -20,14 +25,15 @@ def test_merge_no_ak():
 
 
 def test_merge_one_ak():
-    df = pd.DataFrame({'a': [1, 2, 3]})
+    df = pd.DataFrame({"a": [1, 2, 3]})
     df["b"] = pd.Series(AwkwardExtensionArray([[1, 2, 3], [5], [6, 7]]))
-    s = merge(df, name='test')
+    s = merge(df, name="test")
     assert s.name == "test"
     assert s.dtype == "awkward"
     assert len(s) == 3
     arr = s.values._data
     assert arr.fields == ["a", "b"]
     assert arr["b"].tolist() == [[1, 2, 3], [5], [6, 7]]
+
 
 # def test_merge_all_ak:
