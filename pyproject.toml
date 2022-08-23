@@ -1,9 +1,52 @@
 [build-system]
-requires = ["setuptools>=61.0", "setuptools_scm[toml]>=4.2.0"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling>=1.8.0", "hatch-vcs"]
+build-backend = "hatchling.build"
 
-[tool.setuptools_scm]
-write_to = "src/awkward_pandas/_version.py"
+[project]
+name = "awkward-pandas"
+description = "Awkward Array Pandas Extension"
+readme = "README.md"
+license = "BSD-3-Clause"
+requires-python = ">=3.8"
+authors = [
+    { name = "Doug Davis", email = "ddavis@ddavis.io" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "awkward>=1.9.0rc10",
+    "pandas>=1.2",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+complete = [
+    "pyarrow",
+    "pytest >=6.0",
+    "pytest-cov >=3.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/intake/awkward-pandas"
+"Bug Tracker" = "https://github.com/intake/awkward-pandas/issues"
+
+[tool.hatch.version]
+source = "vcs"
+path = "src/awkward_pandas/__init__.py"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/awkward_pandas/version.py"
+
+[tool.hatch.build.targets.sdist]
+include = ["/src"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -16,7 +59,6 @@ addopts = [
     "--strict-config",
 ]
 log_cli_level = "DEBUG"
-# markers = ["slow", "network", "db"]
 
 [tool.isort]
 profile = "black"
