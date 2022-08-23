@@ -1,5 +1,5 @@
 # setuptools_scm
-src/*/_version.py
+src/awkward_pandas/version.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
