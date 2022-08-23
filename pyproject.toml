@@ -25,9 +25,7 @@ dependencies = [
     "awkward>=1.9.0rc10",
     "pandas>=1.2",
 ]
-dynamic = [
-    "version",
-]
+dynamic = ["version"]
 
 [project.optional-dependencies]
 complete = [
