@@ -197,3 +197,9 @@ class AwkwardAccessor:
             + ["to_column"]
             + extra
         )
+
+    def apply(self, fn):
+        result = fn(self.arr._data)
+        if isinstance(result, ak.Array):
+            return pd.Series(AwkwardExtensionArray(result))
+        return result
