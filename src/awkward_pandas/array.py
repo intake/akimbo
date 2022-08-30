@@ -25,7 +25,6 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
     _data: ak.Array
 
     def __init__(self, data: Any) -> None:
-        self._dtype = AwkwardDtype()
         if isinstance(data, type(self)):
             self._data = data._data
         elif isinstance(data, ak.Array):
@@ -40,6 +39,7 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
             self._data = ak.Array([])
         else:
             raise ValueError
+        self._dtype = AwkwardDtype(ak.type(self._data))
 
     @classmethod
     def _from_sequence(cls, scalars, *, dtype=None, copy=False):

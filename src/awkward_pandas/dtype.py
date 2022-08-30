@@ -12,9 +12,12 @@ if TYPE_CHECKING:
 
 @register_extension_dtype
 class AwkwardDtype(ExtensionDtype):
+    def __init__(self, ak_type=None):
+        self.ak_type = ak_type
+
     @property
     def name(self) -> str:
-        return "awkward"
+        return f"awkward[{self.ak_type}]"
 
     @property
     def type(self) -> type[ak.Array]:
@@ -74,4 +77,4 @@ class AwkwardDtype(ExtensionDtype):
         return AwkwardExtensionArray(ak.from_arrow(data))
 
     def __repr__(self) -> str:
-        return "<AwkwardDtype>"
+        return f"<AwkwardDtype({self.ak_type})>"
