@@ -60,7 +60,7 @@ class AwkwardDtype(ExtensionDtype):
                 f"'construct_from_string' expects a string, got {type(string)}"
             )
 
-        if string == cls().name:
+        if string == cls().name or string == "awkward":
             return cls()
         else:
             raise TypeError(f"Cannot construct a '{cls.__name__}' from '{string}'")
