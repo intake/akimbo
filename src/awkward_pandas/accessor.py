@@ -181,6 +181,12 @@ class AwkwardAccessor:
 
         return f
 
+    def apply(self, fn):
+        result = fn(self.arr._data)
+        if isinstance(result, ak.Array):
+            return pd.Series(AwkwardExtensionArray(result))
+        return result
+
     def __dir__(self):
         if self.arr._data.layout.parameters.get("__array__") == "bytestring":
             extra = dir_str(utf8=False)

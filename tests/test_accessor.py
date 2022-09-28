@@ -1,3 +1,4 @@
+import awkward._v2 as ak
 import pandas as pd
 import pytest
 
@@ -57,6 +58,12 @@ def test_to_columns():
     assert df.num.tolist() == [6, 2, 3]
     assert df.test[0].tolist() == {"num": 6, "deep": [0], "text": "hi"}
     assert df.text.tolist() == ["hi", "ho", "hum"]
+
+
+def test_apply():
+    s = pd.Series(awkward_pandas.AwkwardExtensionArray([[6, 2, 3], [4]]), name="test")
+    applied = s.ak.apply(lambda x: ak.num(x))
+    assert applied.values._data.tolist() == ak.num(s.values._data).tolist()
 
 
 def test_dir():
