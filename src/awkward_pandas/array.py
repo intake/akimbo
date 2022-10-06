@@ -188,8 +188,10 @@ def merge(dataframe, name=None):
     """
     out = {}
     for c in dataframe.columns:
-        if dataframe[c].dtype in ["awkward", "string[pyarrow]"]:
+        if dataframe[c].dtype == "awkward":
             out[c] = dataframe[c].values._data
+        elif dataframe[c].dtype == "string[pyarrow]":
+            out[c] = ak.from_arrow(dataframe[c].values._data)
         else:
             out[c] = dataframe[c].values
     return pd.Series(AwkwardExtensionArray(ak.Array(out)), name=name)
