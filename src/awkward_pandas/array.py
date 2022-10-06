@@ -4,7 +4,7 @@ import operator
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, Literal
 
-import awkward._v2 as ak
+import awkward as ak
 import numpy as np
 import pandas as pd
 from pandas.core.arrays.base import (

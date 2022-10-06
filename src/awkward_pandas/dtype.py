@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import awkward._v2 as ak
+import awkward as ak
 import numpy as np
 from pandas.core.dtypes.base import ExtensionDtype, register_extension_dtype
 
