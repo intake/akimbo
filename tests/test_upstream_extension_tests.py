@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import awkward._v2 as ak
 import pandas as pd
 from pandas.tests.extension.base import BaseConstructorsTests, BaseDtypeTests
 from pandas.tests.extension.base.casting import BaseCastingTests  # noqa
