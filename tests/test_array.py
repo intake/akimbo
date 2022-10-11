@@ -4,7 +4,6 @@ import pytest
 from awkward_pandas import AwkwardExtensionArray, merge
 
 
-@pytest.mark.xfail(reason="awkward cannot convert numpy array object dtype")
 def test_merge_no_ak():
     df = pd.DataFrame(
         {
