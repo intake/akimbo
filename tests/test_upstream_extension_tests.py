@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import awkward._v2 as ak
 import pandas as pd
 from pandas.tests.extension.base import BaseConstructorsTests, BaseDtypeTests
 from pandas.tests.extension.base.casting import BaseCastingTests  # noqa
@@ -64,96 +63,96 @@ class TestAwkwardConstructors(BaseConstructorsTests):
         # self.assert_frame_equal(result, expected)
 
 
-class TestAwkwardBaseCastingTests(BaseCastingTests):
+# class TestAwkwardBaseCastingTests(BaseCastingTests):
 
-    # Overridden because list(AwkwardExtensionArray) will contain
-    # ak.Array as elements, not python objects.
-    def test_tolist(self, data):
-        result = pd.Series(data).tolist()
-        expected = data.tolist()
-        assert result == expected
+#     # Overridden because list(AwkwardExtensionArray) will contain
+#     # ak.Array as elements, not python objects.
+#     def test_tolist(self, data):
+#         result = pd.Series(data).tolist()
+#         expected = data.tolist()
+#         assert result == expected
 
-        result = list(pd.Series(data))
-        expected = list(data)
-        for res, exp in zip(result, expected):
-            assert ak.all(res == exp)
-
-
-class TestAwkwardBaseGetitemTests(BaseGetitemTests):
-    pass
+#         result = list(pd.Series(data))
+#         expected = list(data)
+#         for res, exp in zip(result, expected):
+#             assert ak.all(res == exp)
 
 
-class TestAwkwardBaseGroupbyTests(BaseGroupbyTests):
-    pass
-
-
-class TestAwkwardBaseIndexTests(BaseIndexTests):
-    pass
-
-
-class TestAwkwardBaseInterfaceTests(BaseInterfaceTests):
-    pass
-
-
-class TestAwkwardDim2CompatTests(Dim2CompatTests):
-    pass
-
-
-# Not compatible with awkward array
-# class TestAwkwardNDArrayBacked2DTests(NDArrayBacked2DTests):
+# class TestAwkwardBaseGetitemTests(BaseGetitemTests):
 #     pass
 
 
-class TestAwkwardBaseParsingTests(BaseParsingTests):
-    pass
-
-
-class TestAwkwardBaseMethodsTests(BaseMethodsTests):
-    pass
-
-
-class TestAwkwardBaseMissingTests(BaseMissingTests):
-    pass
-
-
-class TestAwkwardBaseArithmeticOpsTests(BaseArithmeticOpsTests):
-    pass
-
-
-class TestAwkwardBaseComparisonOpsTests(BaseComparisonOpsTests):
-    pass
-
-
-class TestAwkwardBaseOpsUtil(BaseOpsUtil):
-    pass
-
-
-class TestAwkwardBaseUnaryOpsTests(BaseUnaryOpsTests):
-    pass
-
-
-class TestAwkwardBasePrintingTests(BasePrintingTests):
-    pass
-
-
-class TestAwkwardBaseBooleanReduceTests(BaseBooleanReduceTests):
-    pass
-
-
-class TestAwkwardBaseNoReduceTests(BaseNoReduceTests):
-    pass
-
-
-class TestAwkwardBaseNumericReduceTests(BaseNumericReduceTests):
-    pass
-
-
-class TestAwkwardBaseReshapingTests(BaseReshapingTests):
-    def test_ravel(self, data):
-        result = data.ravel()
-        assert type(result) == type(data)
-        result._data is data._data
-
-
-# class TestAwkwardBaseSetitemTests(BaseSetitemTests):
+# class TestAwkwardBaseGroupbyTests(BaseGroupbyTests):
 #     pass
+
+
+# class TestAwkwardBaseIndexTests(BaseIndexTests):
+#     pass
+
+
+# class TestAwkwardBaseInterfaceTests(BaseInterfaceTests):
+#     pass
+
+
+# class TestAwkwardDim2CompatTests(Dim2CompatTests):
+#     pass
+
+
+# # Not compatible with awkward array
+# # class TestAwkwardNDArrayBacked2DTests(NDArrayBacked2DTests):
+# #     pass
+
+
+# class TestAwkwardBaseParsingTests(BaseParsingTests):
+#     pass
+
+
+# class TestAwkwardBaseMethodsTests(BaseMethodsTests):
+#     pass
+
+
+# class TestAwkwardBaseMissingTests(BaseMissingTests):
+#     pass
+
+
+# class TestAwkwardBaseArithmeticOpsTests(BaseArithmeticOpsTests):
+#     pass
+
+
+# class TestAwkwardBaseComparisonOpsTests(BaseComparisonOpsTests):
+#     pass
+
+
+# class TestAwkwardBaseOpsUtil(BaseOpsUtil):
+#     pass
+
+
+# class TestAwkwardBaseUnaryOpsTests(BaseUnaryOpsTests):
+#     pass
+
+
+# class TestAwkwardBasePrintingTests(BasePrintingTests):
+#     pass
+
+
+# class TestAwkwardBaseBooleanReduceTests(BaseBooleanReduceTests):
+#     pass
+
+
+# class TestAwkwardBaseNoReduceTests(BaseNoReduceTests):
+#     pass
+
+
+# class TestAwkwardBaseNumericReduceTests(BaseNumericReduceTests):
+#     pass
+
+
+# class TestAwkwardBaseReshapingTests(BaseReshapingTests):
+#     def test_ravel(self, data):
+#         result = data.ravel()
+#         assert type(result) == type(data)
+#         result._data is data._data
+
+
+# # class TestAwkwardBaseSetitemTests(BaseSetitemTests):
+# #     pass

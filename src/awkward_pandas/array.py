@@ -4,7 +4,7 @@ import operator
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, Literal
 
-import awkward._v2 as ak
+import awkward as ak
 import numpy as np
 import pandas as pd
 from pandas.core.arrays.base import (
@@ -188,8 +188,10 @@ def merge(dataframe, name=None):
     """
     out = {}
     for c in dataframe.columns:
-        if dataframe[c].dtype in ["awkward", "string[pyarrow]"]:
+        if dataframe[c].dtype == "awkward":
             out[c] = dataframe[c].values._data
+        elif dataframe[c].dtype == "string[pyarrow]":
+            out[c] = ak.from_arrow(dataframe[c].values._data)
         else:
             out[c] = dataframe[c].values
     return pd.Series(AwkwardExtensionArray(ak.Array(out)), name=name)

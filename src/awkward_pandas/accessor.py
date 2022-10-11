@@ -1,7 +1,7 @@
 import functools
 import inspect
 
-import awkward._v2 as ak
+import awkward as ak
 import pandas as pd
 
 from awkward_pandas.array import AwkwardExtensionArray
@@ -56,11 +56,12 @@ class AwkwardAccessor:
         if data.layout.parameter("__array__") == "string":
             from pandas.core.arrays.string_arrow import ArrowStringArray
 
-            return pd.Series(
-                ArrowStringArray(
-                    ak.to_arrow(data, extensionarray=False, string_to32=True)
-                )
+            new_ak_array = ak.to_arrow(
+                data,
+                string_to32=True,
+                extensionarray=False,
             )
+            return pd.Series(ArrowStringArray(new_ak_array))
         else:
             return pd.Series(ak.to_numpy(data))
 
