@@ -193,7 +193,7 @@ def merge(dataframe, name=None):
         elif dataframe[c].dtype == "string[pyarrow]":
             out[c] = ak.from_arrow(dataframe[c].values._data)
         elif dataframe[c].dtype == "object":
-            out[c] = list(dataframe[c])
+            out[c] = iter(dataframe[c])
         else:
             out[c] = dataframe[c].values
     return pd.Series(AwkwardExtensionArray(ak.Array(out)), name=name)
