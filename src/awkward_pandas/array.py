@@ -171,9 +171,6 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
 AwkwardExtensionArray._add_arithmetic_ops()
 AwkwardExtensionArray._add_comparison_ops()
 
-# for k in ["mean", "var", "std", "sum", "prod"]:
-#     setattr(AwkwardExtensionArray, k, getattr(ak, k))
-
 
 def merge(dataframe, name=None):
     """Create a single awkward series by merging the columns of a dataframe.
