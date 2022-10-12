@@ -65,7 +65,7 @@ class AwkwardAccessor:
         else:
             return pd.Series(ak.to_numpy(data))
 
-    def to_columns(self, cull=True):
+    def to_columns(self, cull=True, extract_all=False):
         s = self._obj
         fields = self.arr._data.fields
         out = {}
@@ -73,8 +73,11 @@ class AwkwardAccessor:
             try:
                 out[field] = s.ak[field].ak.to_column()
             except Exception:
-                pass
-        if cull:
+                if extract_all:
+                    out[field] = s.ak[field]
+        if cull and extract_all:
+            pass
+        elif cull:
             out[s.name] = s.ak[[_ for _ in fields if _ not in out]]
         else:
             out[s.name] = s
