@@ -147,6 +147,7 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
         return type(self)(self._data.__array_ufunc__(*inputs, **kwargs))
 
     def max(self, **kwargs):
+        print("max?")
         return ak.max(self._data, **kwargs)
 
     def min(self, **kwargs):
@@ -161,36 +162,6 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
     def sum(self, axis=None, **kwargs):
         return ak.sum(self._data, axis=axis, **kwargs)
 
-    # def __repr__(self) -> str:
-    #     return f"pandas: {self._data.__repr__()}"
-
-    # def __str__(self) -> str:
-    #     return str(self._data)
-
 
 AwkwardExtensionArray._add_arithmetic_ops()
 AwkwardExtensionArray._add_comparison_ops()
-
-
-def merge(dataframe, name=None):
-    """Create a single awkward series by merging the columns of a dataframe.
-
-    Parameters
-    ----------
-    dataframe: pd.DataFrame
-        Containing columns of simple numpy type, object type (e.g.,
-        srtings, lists or dicts) or existing awkward columns.
-    name: str or None
-        Name of the output series.
-    """
-    out = {}
-    for c in dataframe.columns:
-        if dataframe[c].dtype == "awkward":
-            out[c] = dataframe[c].values._data
-        elif dataframe[c].dtype == "string[pyarrow]":
-            out[c] = ak.from_arrow(dataframe[c].values._data)
-        elif dataframe[c].dtype == "object":
-            out[c] = iter(dataframe[c])
-        else:
-            out[c] = dataframe[c].values
-    return pd.Series(AwkwardExtensionArray(ak.Array(out)), name=name)
