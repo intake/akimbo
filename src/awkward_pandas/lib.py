@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import awkward as ak
 import numpy as np
 import pandas as pd
@@ -5,7 +7,7 @@ import pandas as pd
 from awkward_pandas.array import AwkwardExtensionArray
 
 
-def merge(dataframe, name: str | None = None) -> pd.Series:
+def merge(dataframe: pd.DataFrame, name: str | None = None) -> pd.Series:
     """Create a single awkward series by merging the columns of a dataframe.
 
     Parameters
