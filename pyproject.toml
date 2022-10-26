@@ -38,6 +38,10 @@ complete = [
     "pytest >=6.0",
     "pytest-cov >=3.0.0",
 ]
+docs = [
+    "sphinx",
+    "sphinx-rtd-theme",
+]
 
 [project.urls]
 Homepage = "https://github.com/intake/awkward-pandas"
