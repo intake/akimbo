@@ -44,6 +44,10 @@ class AwkwardAccessor:
                 self._arr = AwkwardExtensionArray(self._obj)
         return self._arr
 
+    @property
+    def array(self):
+        return self.arr._data
+
     def __getitem__(self, *items):
         ds = self.arr._data.__getitem__(*items)
         return pd.Series(AwkwardExtensionArray(ds))
