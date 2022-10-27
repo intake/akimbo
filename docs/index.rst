@@ -10,9 +10,15 @@ Docs in development
 
 .. toctree::
    :maxdepth: 2
+   :caption: User Guide
 
    install.rst
    quickstart.rst
+
+.. toctree::
+   :maxdepth: 1
+   :caption: API Reference
+
    api.rst
 
 

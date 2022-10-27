@@ -40,7 +40,7 @@ complete = [
 ]
 docs = [
     "sphinx",
-    "sphinx-rtd-theme",
+    "furo",
 ]
 
 [project.urls]
