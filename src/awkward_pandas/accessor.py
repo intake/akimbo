@@ -27,7 +27,7 @@ class AwkwardAccessor:
         self._arr = None
 
     @property
-    def arr(self):
+    def extarray(self):
         if self._arr is None:
             if isinstance(self._obj, AwkwardExtensionArray):
                 self._arr = self._obj
@@ -46,14 +46,14 @@ class AwkwardAccessor:
 
     @property
     def array(self):
-        return self.arr._data
+        return self.extarray._data
 
     def __getitem__(self, *items):
-        ds = self.arr._data.__getitem__(*items)
+        ds = self.array.__getitem__(*items)
         return pd.Series(AwkwardExtensionArray(ds))
 
     def to_column(self):
-        data = self.arr._data
+        data = self.array
         if data.ndim > 1:
             raise ValueError
         # TODO: if all_strings(data) - accept ?str
@@ -71,7 +71,7 @@ class AwkwardAccessor:
 
     def to_columns(self, cull=True, extract_all=False):
         s = self._obj
-        fields = self.arr._data.fields
+        fields = self.array.fields
         out = {}
         for field in fields:
             try:
@@ -88,10 +88,10 @@ class AwkwardAccessor:
         return pd.DataFrame(out)
 
     def encode(self, encoding="utf-8"):
-        return pd.Series(AwkwardExtensionArray(encode(self.arr._data)))
+        return pd.Series(AwkwardExtensionArray(encode(self.array)))
 
     def decode(self, encoding="utf-8"):
-        return pd.Series(AwkwardExtensionArray(decode(self.arr._data)))
+        return pd.Series(AwkwardExtensionArray(decode(self.array)))
 
     @staticmethod
     def _validate(obj):
@@ -100,12 +100,12 @@ class AwkwardAccessor:
         ) or isinstance(obj.values, AwkwardExtensionArray)
 
     # def to_arrow(self):
-    #    return self.arr._data.to_arrow()
+    #    return self.array.to_arrow()
 
     # def cartesian(self, other, **kwargs):
     #    if isinstance(other, AwkwardExtensionArray):
     #        other = other._data
-    #    return AwkwardExtensionArray(ak.cartesian([self.arr._data, other], **kwargs))
+    #    return AwkwardExtensionArray(ak.cartesian([self.array, other], **kwargs))
 
     def __getattr__(self, item):
         # replace with concrete implementations of all top-level ak functions
@@ -113,8 +113,8 @@ class AwkwardAccessor:
             raise AttributeError
         func = getattr(ak, item, None)
 
-        utf8 = all_strings(self.arr._data.layout)
-        byte = all_bytes(self.arr._data.layout)
+        utf8 = all_strings(self.array.layout)
+        byte = all_bytes(self.array.layout)
         if func:
 
             @functools.wraps(func)
@@ -125,7 +125,7 @@ class AwkwardAccessor:
                     else other
                     for other in others
                 ]
-                ak_arr = func(self.arr._data, *others, **kwargs)
+                ak_arr = func(self.array, *others, **kwargs)
                 # TODO: special case to carry over index and name information where output
                 #  is similar to input, e.g., has same length
                 if isinstance(ak_arr, ak.Array):
@@ -149,7 +149,7 @@ class AwkwardAccessor:
                     data = pyarrow.chunked_array(
                         [
                             ak.to_arrow(
-                                self.arr._data,
+                                self.array,
                                 extensionarray=False,
                                 string_to32=True,
                                 bytestring_to32=True,
@@ -190,15 +190,15 @@ class AwkwardAccessor:
         return f
 
     def apply(self, fn):
-        result = fn(self.arr._data)
+        result = fn(self.array)
         if isinstance(result, ak.Array):
             return pd.Series(AwkwardExtensionArray(result))
         return result
 
     def __dir__(self):
-        if self.arr._data.layout.parameters.get("__array__") == "bytestring":
+        if self.array.layout.parameters.get("__array__") == "bytestring":
             extra = dir_str(utf8=False)
-        elif self.arr._data.layout.parameters.get("__array__") == "string":
+        elif self.array.layout.parameters.get("__array__") == "string":
             extra = dir_str(utf8=True)
         else:
             extra = []
