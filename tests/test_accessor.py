@@ -72,3 +72,10 @@ def test_dir():
     assert "Array" not in dir(s.ak)
     assert "ak_num" not in dir(s.ak)
     assert "_util" not in dir(s.ak)
+
+
+def test_array_property():
+    a = ak.from_iter([[1, 2, 3], [4, 5], [6]])
+    s = pd.Series(awkward_pandas.AwkwardExtensionArray(a))
+    # ensure that the array associated with the accessor is the same as the original
+    assert s.ak.array is a
