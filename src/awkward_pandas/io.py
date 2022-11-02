@@ -11,25 +11,7 @@ def read_parquet(
     extract_all=False,
     **kwargs,
 ):
-    """Read a Parquet dataset with nested data into a Series or DataFrame.
-
-    Parameters
-    ----------
-    url : str
-        Location of the dataset.
-    extract : bool
-        ...
-    root_name : str
-        ...
-    extract_all : bool
-        ...
-
-    Returns
-    -------
-    pandas.Series or pandas.DataFrame
-        Resulting Pandas object.
-
-    """
+    """Read a Parquet dataset with nested data into a Series or DataFrame."""
     ds = ak.from_parquet(url, **kwargs)
     s = pd.Series(awkward_pandas.AwkwardExtensionArray(ds), name=root_name)
     if extract:
@@ -44,7 +26,7 @@ def read_json(
     extract_all=False,
     **kwargs,
 ):
-    """Read a Parquet dataset with nested data into a Series or DataFrame."""
+    """Read a JSON dataset with nested data into a Series or DataFrame."""
     ds = ak.from_json(
         source,
         line_delimited=True,
