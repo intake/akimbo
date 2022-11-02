@@ -41,6 +41,7 @@ complete = [
 docs = [
     "sphinx",
     "furo",
+    "nbsphinx",
 ]
 
 [project.urls]
