@@ -24,7 +24,12 @@ extensions = [
 ]
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    "**.ipynb_checkpoints",
+]
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -43,3 +48,7 @@ intersphinx_mapping = {
 }
 
 pygments_style = "default"
+
+
+highlight_language = "python3"
+nbsphinx_execute = "never"
