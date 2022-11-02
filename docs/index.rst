@@ -15,7 +15,7 @@ workflows that are already leveraging `Pandas`_ Series and DataFrames.
    :caption: User Guide
 
    install.rst
-   quickstart.rst
+   quickstart.ipynb
 
 .. toctree::
    :maxdepth: 1
