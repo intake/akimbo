@@ -6,14 +6,16 @@
 Awkward Pandas
 ==============
 
-Docs in development
+The awkward-pandas project provides a Pandas `ExtensionArray`_ and
+`ExtensionDtype`_ that enable analysis of nested, non-tabular data in
+workflows that are already leveraging `Pandas`_ Series and DataFrames.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: User Guide
 
    install.rst
-   quickstart.rst
+   quickstart.ipynb
 
 .. toctree::
    :maxdepth: 1
@@ -29,3 +31,9 @@ Docs in development
    * :ref:`genindex`
    * :ref:`modindex`
    * :ref:`search`
+
+
+
+.. _Pandas: https://pandas.pydata.org/
+.. _ExtensionArray: https://pandas.pydata.org/docs/development/extending.html#extensionarray
+.. _ExtensionDtype: https://pandas.pydata.org/docs/development/extending.html#extensiondtype

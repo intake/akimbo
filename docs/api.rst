@@ -3,10 +3,26 @@ awkward-pandas
 
 .. currentmodule:: awkward_pandas
 
-.. automodule:: awkward_pandas
-   :undoc-members:
-   :members:
+Top Level Functions
+~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: awkward_pandas.accessor
-   :undoc-members:
-   :members:
+.. autosummary::
+   :toctree: generated/
+
+   from_awkward
+   merge
+   read_parquet
+   read_json
+
+Accessor
+~~~~~~~~
+
+.. currentmodule:: awkward_pandas.accessor
+
+.. autosummary::
+   :toctree: generated/
+
+   AwkwardAccessor
+   AwkwardAccessor.array
+   AwkwardAccessor.to_column
+   AwkwardAccessor.to_columns
