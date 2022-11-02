@@ -42,6 +42,7 @@ docs = [
     "sphinx",
     "furo",
     "nbsphinx",
+    "ipython",
 ]
 
 [project.urls]
