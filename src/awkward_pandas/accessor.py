@@ -69,7 +69,7 @@ class AwkwardAccessor:
         else:
             return pd.Series(ak.to_numpy(data))
 
-    def to_columns(self, cull=True, extract_all=False):
+    def to_columns(self, cull=True, extract_all=False, awkward_name="awkward-data"):
         s = self._obj
         fields = self.array.fields
         out = {}
@@ -82,7 +82,8 @@ class AwkwardAccessor:
         if cull and extract_all:
             pass
         elif cull:
-            out[s.name] = s.ak[[_ for _ in fields if _ not in out]]
+            n = s.name or awkward_name
+            out[n] = s.ak[[_ for _ in fields if _ not in out]]
         else:
             out[s.name] = s
         return pd.DataFrame(out)
