@@ -85,12 +85,12 @@ def get_func(item, utf8=True):
 
 
 def _encode(layout):
-    if layout.is_RecordType:
+    if layout.is_record:
         [_encode(_) for _ in layout._contents]
-    elif layout.is_ListType and layout.parameter("__array__") == "string":
+    elif layout.is_list and layout.parameter("__array__") == "string":
         layout._parameters["__array__"] = "bytestring"
         layout.content._parameters["__array__"] = ("byte",)
-    elif layout.is_OptionType or layout.is_ListType:
+    elif layout.is_option or layout.is_list:
         _encode(layout.content)
 
 
@@ -103,12 +103,12 @@ def encode(arr, encoding="utf-8"):
 
 
 def _decode(layout):
-    if layout.is_RecordType:
+    if layout.is_record:
         [_decode(_) for _ in layout._contents]
-    elif layout.is_ListType and layout.parameter("__array__") == "bytestring":
+    elif layout.is_list and layout.parameter("__array__") == "bytestring":
         layout._parameters["__array__"] = "string"
         layout.content._parameters["__array__"] = ("char",)
-    elif layout.is_OptionType or layout.is_ListType:
+    elif layout.is_option or layout.is_list:
         _decode(layout.content)
 
 
@@ -121,9 +121,9 @@ def decode(arr, encoding="utf-8"):
 
 
 def all_strings(layout):
-    if layout.is_RecordType:
+    if layout.is_record:
         return all(all_strings(layout[field]) for field in layout.fields)
-    if layout.is_ListType or layout.is_OptionType:
+    if layout.is_list or layout.is_option:
         if layout.parameter("__array__") == "string":
             return True
         return all_strings(layout.content)
@@ -131,9 +131,9 @@ def all_strings(layout):
 
 
 def all_bytes(layout):
-    if layout.is_RecordType:
+    if layout.is_record:
         return all(all_strings(layout[field]) for field in layout.fields)
-    if layout.is_ListType or layout.is_OptionType:
+    if layout.is_list or layout.is_option:
         if layout.parameter("__array__") == "bytestring":
             return True
         return all_strings(layout.content)
