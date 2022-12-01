@@ -112,3 +112,6 @@ show_missing = true
 [tool.coverage.run]
 omit = ["src/awkward_pandas/version.py"]
 source = ["src/awkward_pandas"]
+
+[tool.ruff]
+ignore = ["E501"]
