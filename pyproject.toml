@@ -27,7 +27,7 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-    "awkward>=2.0.0rc1",
+    "awkward>=2.0.0rc4",
     "pandas>=1.2",
 ]
 dynamic = ["version"]
@@ -112,3 +112,6 @@ show_missing = true
 [tool.coverage.run]
 omit = ["src/awkward_pandas/version.py"]
 source = ["src/awkward_pandas"]
+
+[tool.ruff]
+ignore = ["E501"]
