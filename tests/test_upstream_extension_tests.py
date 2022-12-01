@@ -19,7 +19,7 @@ from pandas.tests.extension.base.ops import BaseUnaryOpsTests  # noqa
 from pandas.tests.extension.base.printing import BasePrintingTests  # noqa
 from pandas.tests.extension.base.reduce import BaseBooleanReduceTests  # noqa
 from pandas.tests.extension.base.reduce import BaseNoReduceTests  # noqa
-from pandas.tests.extension.base.reduce import BaseNumericReduceTests  # noqa; noqa
+from pandas.tests.extension.base.reduce import BaseNumericReduceTests  # noqa
 from pandas.tests.extension.base.reshaping import BaseReshapingTests  # noqa
 from pandas.tests.extension.base.setitem import BaseSetitemTests  # noqa
 
