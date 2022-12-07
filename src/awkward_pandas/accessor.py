@@ -53,6 +53,11 @@ class AwkwardAccessor:
         return pd.Series(AwkwardExtensionArray(ds))
 
     def to_column(self):
+        """Convert awkward series to regular pandas type
+
+        Will convert to numpy or string[pyarrow] if appropriate.
+        May fail if the conversion cannot be done.
+        """
         data = self.array
         if data.ndim > 1:
             raise ValueError
@@ -70,6 +75,28 @@ class AwkwardAccessor:
             return pd.Series(ak.to_numpy(data))
 
     def to_columns(self, cull=True, extract_all=False, awkward_name="awkward-data"):
+        """Extract columns from an awkward series
+
+        Where the series is a record type, each field may become a regular
+        pandas column.
+
+        Parameters
+        ----------
+        cull: bool
+            For those columns that we convert into regular ones, remove them
+            from the original awkward series if True
+        extract_all: bool
+            If False (default), only extract columns that can turn into normal
+            pandas columns. If True, all columns will be extracted, but those
+            that cannot be converted retain "awkward" type
+        awkward_name: str
+            If there are leftover columns in the original series, in the
+            resultant dataframe, these leftovers will get this column name
+
+        Returns
+        -------
+        pd.DataFrame
+        """
         s = self._obj
         fields = self.array.fields
         out = {}
@@ -83,15 +110,19 @@ class AwkwardAccessor:
             pass
         elif cull:
             n = s.name or awkward_name
-            out[n] = s.ak[[_ for _ in fields if _ not in out]]
+            outfields = [_ for _ in fields if _ not in out]
+            if outfields:
+                out[n] = s.ak[outfields]
         else:
             out[s.name] = s
         return pd.DataFrame(out)
 
     def encode(self, encoding="utf-8"):
+        """bytes -> string"""
         return pd.Series(AwkwardExtensionArray(encode(self.array)))
 
     def decode(self, encoding="utf-8"):
+        """string -> bytes"""
         return pd.Series(AwkwardExtensionArray(decode(self.array)))
 
     @staticmethod
@@ -191,6 +222,7 @@ class AwkwardAccessor:
         return f
 
     def apply(self, fn):
+        """Perform function on all the values of the series"""
         result = fn(self.array)
         if isinstance(result, ak.Array):
             return pd.Series(AwkwardExtensionArray(result))
