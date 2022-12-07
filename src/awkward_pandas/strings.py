@@ -89,7 +89,7 @@ def _encode(layout):
         [_encode(_) for _ in layout._contents]
     elif layout.is_list and layout.parameter("__array__") == "string":
         layout._parameters["__array__"] = "bytestring"
-        layout.content._parameters["__array__"] = ("byte",)
+        layout.content._parameters["__array__"] = "byte"
     elif layout.is_option or layout.is_list:
         _encode(layout.content)
 
@@ -107,7 +107,7 @@ def _decode(layout):
         [_decode(_) for _ in layout._contents]
     elif layout.is_list and layout.parameter("__array__") == "bytestring":
         layout._parameters["__array__"] = "string"
-        layout.content._parameters["__array__"] = ("char",)
+        layout.content._parameters["__array__"] = "char"
     elif layout.is_option or layout.is_list:
         _decode(layout.content)
 

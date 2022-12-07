@@ -25,6 +25,16 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
     _data: ak.Array
 
     def __init__(self, data: Any) -> None:
+        """
+
+        Parameters
+        ----------
+        data : awkward array, dict, JSON string, iterable
+            Construct extension array from this data. If an iterable or dict,
+            pass to awkward to generate the internal array. If a JSON string,
+            parse it using awkward.
+        """
+
         self._dtype = AwkwardDtype()
         if isinstance(data, type(self)):
             self._data = data._data
