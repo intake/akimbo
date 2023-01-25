@@ -46,11 +46,19 @@ class AwkwardAccessor:
 
     @property
     def array(self):
+        """Get underlying awkward array"""
         return self.extarray._data
 
-    def __getitem__(self, *items):
-        ds = self.array.__getitem__(*items)
-        return pd.Series(AwkwardExtensionArray(ds))
+    def __getitem__(self, items):
+        """Extract components using awkward indexing"""
+        ds = self.array.__getitem__(items)
+        index = None
+        if items[0]:
+            if not isinstance(items[0], str) and not (
+                isinstance(items[0], list) and isinstance(items[0][0], str)
+            ):
+                index = self._obj.index[items[0]]
+        return pd.Series(AwkwardExtensionArray(ds), index=index)
 
     def to_column(self):
         """Convert awkward series to regular pandas type
@@ -140,6 +148,7 @@ class AwkwardAccessor:
     #    return AwkwardExtensionArray(ak.cartesian([self.array, other], **kwargs))
 
     def __getattr__(self, item):
+        """Call awkward namespace function on a series"""
         # replace with concrete implementations of all top-level ak functions
         if item not in dir(self):
             raise AttributeError
