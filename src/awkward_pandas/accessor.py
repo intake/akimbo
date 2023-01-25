@@ -54,9 +54,8 @@ class AwkwardAccessor:
         ds = self.array.__getitem__(items)
         index = None
         if items[0]:
-            if (
-                    not isinstance(items[0], str)
-                    and not (isinstance(items[0], list) and isinstance(items[0][0], str))
+            if not isinstance(items[0], str) and not (
+                isinstance(items[0], list) and isinstance(items[0][0], str)
             ):
                 index = self._obj.index[items[0]]
         return pd.Series(AwkwardExtensionArray(ds), index=index)
