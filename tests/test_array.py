@@ -40,10 +40,12 @@ def test_merge_one_ak():
 
 
 def test_parquet_roundtrip(tmp_path):
-    df = pd.DataFrame({
-        "a": [1, 2, 3, 4, 5],
-        "b": pd.Series(AwkwardExtensionArray([[1, 2, 3], [5], [6, 7], [], None])),
-    })
+    df = pd.DataFrame(
+        {
+            "a": [1, 2, 3, 4, 5],
+            "b": pd.Series(AwkwardExtensionArray([[1, 2, 3], [5], [6, 7], [], None])),
+        }
+    )
 
     assert df["b"].dtype == "awkward"
 
