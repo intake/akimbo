@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+from pandas.testing import assert_frame_equal
 
 from awkward_pandas import AwkwardExtensionArray, merge
 
@@ -38,4 +39,18 @@ def test_merge_one_ak():
     assert arr["b"].tolist() == [[1, 2, 3], [5], [6, 7]]
 
 
-# def test_merge_all_ak:
+def test_parquet_roundtrip(tmp_path):
+    df = pd.DataFrame(
+        {
+            "a": [1, 2, 3, 4, 5],
+            "b": pd.Series(AwkwardExtensionArray([[1, 2, 3], [5], [6, 7], [], None])),
+        }
+    )
+
+    assert df["b"].dtype == "awkward"
+
+    path = tmp_path / "output.parquet"
+    df.to_parquet(path, engine="pyarrow")
+    result = pd.read_parquet(path)
+
+    assert_frame_equal(df, result)

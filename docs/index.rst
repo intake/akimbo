@@ -23,17 +23,6 @@ workflows that are already leveraging `Pandas`_ Series and DataFrames.
 
    api.rst
 
-
-..
-   Indices and tables
-   ==================
-
-   * :ref:`genindex`
-   * :ref:`modindex`
-   * :ref:`search`
-
-
-
 .. _Pandas: https://pandas.pydata.org/
 .. _ExtensionArray: https://pandas.pydata.org/docs/development/extending.html#extensionarray
 .. _ExtensionDtype: https://pandas.pydata.org/docs/development/extending.html#extensiondtype

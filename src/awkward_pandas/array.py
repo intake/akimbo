@@ -145,10 +145,10 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
 
         return np.asarray(self._data, dtype=dtype)
 
-    def __arrow_array__(self):
+    def __arrow_array__(self, type=None):
         import pyarrow as pa
 
-        return pa.chunked_array(ak.to_arrow(self._data))
+        return pa.chunked_array(ak.to_arrow(self._data), type=type)
 
     def tolist(self) -> list:
         return self._data.tolist()
