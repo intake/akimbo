@@ -1,6 +1,6 @@
 import pandas as pd
 
-from awkward_pandas import AwkwardDtype
+from awkward_pandas.dtype import AwkwardDtype
 
 s = pd.Series(["hello"], dtype="awkward")
 
