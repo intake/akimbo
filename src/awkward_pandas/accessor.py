@@ -244,7 +244,7 @@ class AwkwardAccessor:
             extra = dir_str(utf8=True)
         else:
             extra = []
-        return (
+        return sorted(
             [
                 _
                 for _ in (dir(ak))
