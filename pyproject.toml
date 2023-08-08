@@ -35,15 +35,24 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 complete = [
-    "pyarrow",
-    "pytest >=6.0",
-    "pytest-cov >=3.0.0",
+  "awkward-pandas[strings,parquet]",
+]
+parquet = [
+  "pyarrow",
+]
+strings = [
+  "pyarrow >=7.0.0",
+]
+test = [
+  "awkward-pandas[complete]",
+  "pytest >=6.0",
+  "pytest-cov >=3.0.0",
 ]
 docs = [
-    "sphinx",
-    "furo",
-    "nbsphinx",
-    "ipython",
+  "sphinx",
+  "furo",
+  "nbsphinx",
+  "ipython",
 ]
 
 [project.urls]
