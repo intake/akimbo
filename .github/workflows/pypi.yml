@@ -2,34 +2,23 @@ name: PyPI Tests
 
 on:
   push:
-    paths-ignore:
-    - '**.md'
+    branches: ['main']
+    paths-ignore: ['**.md', 'docs/**']
   pull_request:
-    paths-ignore:
-    - '**.md'
+    paths-ignore: ['**.md', 'docs/**']
   workflow_dispatch:
 
 concurrency:
-  group: 'conda-tests-${{ github.head_ref || github.run_id }}'
+  group: 'pypi-tests-${{ github.head_ref || github.run_id }}'
   cancel-in-progress: true
 
 jobs:
-
-  pre-commit:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-python@v4
-      with:
-        python-version: 3.x
-    - uses: pre-commit/action@v3.0.0
-
   pytest:
     strategy:
       fail-fast: false
       matrix:
         platform: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.8", "3.9", "3.10"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
     runs-on: ${{matrix.platform}}
     steps:
     - name: Checkout
@@ -41,7 +30,7 @@ jobs:
     - name: install
       run: |
         pip install pip wheel -U
-        pip install -q --no-cache-dir -e .[complete]
+        pip install -q --no-cache-dir .[complete]
         pip list
     - name: test
       run: |
