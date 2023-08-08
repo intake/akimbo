@@ -6,14 +6,7 @@ import pandas as pd
 
 from awkward_pandas.array import AwkwardExtensionArray
 from awkward_pandas.dtype import AwkwardDtype
-from awkward_pandas.strings import (
-    all_bytes,
-    all_strings,
-    decode,
-    dir_str,
-    encode,
-    get_func,
-)
+from awkward_pandas.strings import decode, encode
 
 funcs = [n for n in dir(ak) if inspect.isfunction(getattr(ak, n))]
 
@@ -125,14 +118,6 @@ class AwkwardAccessor:
             out[s.name] = s
         return pd.DataFrame(out)
 
-    def encode(self, encoding="utf-8"):
-        """bytes -> string"""
-        return pd.Series(AwkwardExtensionArray(encode(self.array)))
-
-    def decode(self, encoding="utf-8"):
-        """string -> bytes"""
-        return pd.Series(AwkwardExtensionArray(decode(self.array)))
-
     @staticmethod
     def _validate(obj):
         return isinstance(
@@ -147,6 +132,10 @@ class AwkwardAccessor:
     #        other = other._data
     #    return AwkwardExtensionArray(ak.cartesian([self.array, other], **kwargs))
 
+    @property
+    def str(self):
+        return StringAccessor(self)
+
     def __getattr__(self, item):
         """Call awkward namespace function on a series"""
         # replace with concrete implementations of all top-level ak functions
@@ -154,8 +143,6 @@ class AwkwardAccessor:
             raise AttributeError
         func = getattr(ak, item, None)
 
-        utf8 = all_strings(self.array.layout)
-        byte = all_bytes(self.array.layout)
         if func:
 
             @functools.wraps(func)
@@ -177,54 +164,6 @@ class AwkwardAccessor:
                     )
                 return ak_arr
 
-        elif utf8 or byte:
-            func = get_func(item, utf8=utf8)
-            if func is None:
-                raise AttributeError
-
-            @functools.wraps(func)
-            def f(*args, **kwargs):
-                import pyarrow
-
-                if utf8:
-                    data = pyarrow.chunked_array(
-                        [
-                            ak.to_arrow(
-                                self.array,
-                                extensionarray=False,
-                                string_to32=True,
-                                bytestring_to32=True,
-                            )
-                        ]
-                    )
-                else:
-                    data = pyarrow.chunked_array(
-                        [
-                            ak.to_arrow(
-                                self.decode().values._data,
-                                extensionarray=False,
-                                string_to32=True,
-                                bytestring_to32=True,
-                            )
-                        ]
-                    )
-
-                arrow_arr = func(data, *args, **kwargs)
-                # TODO: special case to carry over index and name information where output
-                #  is similar to input, e.g., has same length
-                ak_arr = ak.from_arrow(arrow_arr)
-                if all_strings(ak_arr.layout) and not utf8:
-                    # back to bytes-array
-                    ak_arr = encode(ak.Array(ak_arr.layout.content))
-                if isinstance(ak_arr, ak.Array):
-                    # TODO: perhaps special case here if the output can be represented
-                    #  as a regular num/cupy array
-
-                    return pd.Series(
-                        AwkwardExtensionArray(ak_arr), index=self._obj.index
-                    )
-                return ak_arr
-
         else:
             raise AttributeError
 
@@ -238,18 +177,47 @@ class AwkwardAccessor:
         return result
 
     def __dir__(self):
-        if self.array.layout.parameters.get("__array__") == "bytestring":
-            extra = dir_str(utf8=False)
-        elif self.array.layout.parameters.get("__array__") == "string":
-            extra = dir_str(utf8=True)
-        else:
-            extra = []
-        return (
-            [
-                _
-                for _ in (dir(ak))
-                if not _.startswith(("_", "ak_")) and not _[0].isupper()
-            ]
-            + ["to_column"]
-            + extra
-        )
+        return [
+            _
+            for _ in (dir(ak))
+            if not _.startswith(("_", "ak_")) and not _[0].isupper()
+        ] + ["to_column"]
+
+
+class StringAccessor:
+    def __init__(self, acc):
+        self.acc = acc
+
+    def encode(self, encoding="utf-8"):
+        """bytes -> string"""
+        return pd.Series(AwkwardExtensionArray(encode(self.acc.array)))
+
+    def decode(self, encoding="utf-8"):
+        """string -> bytes"""
+        return pd.Series(AwkwardExtensionArray(decode(self.acc.array)))
+
+    def __getattr__(self, attr):
+        if attr == "startswith":
+            attr = "starts_with"
+        elif attr == "endswith":
+            attr = "ends_with"
+        elif attr == "isalpha":
+            attr = "is_alpha"
+
+        fn = getattr(ak.str, attr)
+
+        @functools.wraps(fn)
+        def f(*args, **kwargs):
+            aarr = fn(self.acc.array, *args, **kwargs)
+            if isinstance(aarr, ak.Array):
+                return pd.Series(AwkwardExtensionArray(aarr), index=self.acc._obj.index)
+            return aarr
+
+        return f
+
+    def __dir__(self):
+        return [
+            aname
+            for aname in (dir(ak.str))
+            if not aname.startswith(("_", "akstr_")) and not aname[0].isupper()
+        ]
