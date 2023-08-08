@@ -26,11 +26,14 @@ def test_getitem():
     assert s2.tolist() == [[6], [4]]
 
 
-def test_to_column():
+def test_to_column_ints():
     s = pd.Series(awkward_pandas.AwkwardExtensionArray([6, 2, 3]), name="test")
     s2 = s.ak.to_column()
     assert s2.dtype == "int64"
 
+
+def test_to_column_strings():
+    pytest.importorskip("pyarrow")
     s = pd.Series(awkward_pandas.AwkwardExtensionArray(["6", "2", "3"]), name="test")
     s2 = s.ak.to_column()
     assert s2.dtype == "string[pyarrow]"
@@ -41,6 +44,7 @@ def test_to_column():
 
 
 def test_to_columns():
+    pytest.importorskip("pyarrow")
     s = pd.Series(
         awkward_pandas.AwkwardExtensionArray(
             {"num": [6, 2, 3], "deep": [[0], [], None], "text": ["hi", "ho", "hum"]}
