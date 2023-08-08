@@ -31,7 +31,7 @@ jobs:
       run: |
         pip install pip wheel -U
         pip uninstall -y awkward
-        pip install git+https://github.com/scikit-hep/awkward@jpivarski/use-pyarrow-for-strings
+        pip install git+https://github.com/scikit-hep/awkward@main
         pip install -q --no-cache-dir .[test]
         pip list
     - name: test
