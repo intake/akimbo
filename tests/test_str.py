@@ -3,6 +3,8 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
+pytest.importorskip("pyarrow")
+
 
 @pytest.mark.parametrize("binary", [True, False])
 @pytest.mark.parametrize("method", ["upper", "capitalize", "isalpha"])
