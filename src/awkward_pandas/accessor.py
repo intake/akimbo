@@ -38,7 +38,7 @@ class AwkwardAccessor:
         return self._arr
 
     @property
-    def array(self):
+    def array(self) -> ak.Array:
         """Get underlying awkward array"""
         return self.extarray._data
 
@@ -53,7 +53,7 @@ class AwkwardAccessor:
                 index = self._obj.index[items[0]]
         return pd.Series(AwkwardExtensionArray(ds), index=index)
 
-    def to_column(self):
+    def to_column(self) -> pd.Series:
         """Convert awkward series to regular pandas type
 
         Will convert to numpy or string[pyarrow] if appropriate.
@@ -75,7 +75,12 @@ class AwkwardAccessor:
         else:
             return pd.Series(ak.to_numpy(data))
 
-    def to_columns(self, cull=True, extract_all=False, awkward_name="awkward-data"):
+    def to_columns(
+        self,
+        cull: bool = True,
+        extract_all: bool = False,
+        awkward_name: str = "awkward-data",
+    ) -> pd.DataFrame:
         """Extract columns from an awkward series
 
         Where the series is a record type, each field may become a regular
@@ -133,7 +138,7 @@ class AwkwardAccessor:
     #    return AwkwardExtensionArray(ak.cartesian([self.array, other], **kwargs))
 
     @property
-    def str(self):
+    def str(self) -> StringAccessor:
         return StringAccessor(self)
 
     def __getattr__(self, item):
@@ -176,7 +181,7 @@ class AwkwardAccessor:
             return pd.Series(AwkwardExtensionArray(result))
         return result
 
-    def __dir__(self):
+    def __dir__(self) -> list[str]:
         return [
             _
             for _ in (dir(ak))

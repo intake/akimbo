@@ -19,7 +19,7 @@ def _encode(layout):
         _encode(layout.content)
 
 
-def encode(arr, encoding="utf-8"):
+def encode(arr: ak.Array, encoding: str = "utf-8") -> ak.Array:
     if encoding.lower() not in ["utf-8", "utf8"]:
         raise NotImplementedError
     arr2 = ak.copy(arr)
@@ -37,7 +37,7 @@ def _decode(layout):
         _decode(layout.content)
 
 
-def decode(arr, encoding="utf-8"):
+def decode(arr: ak.Array, encoding: str = "utf-8") -> ak.Array:
     if encoding.lower() not in ["utf-8", "utf8"]:
         raise NotImplementedError
     arr2 = ak.copy(arr)  # to be mutated on creation
@@ -67,11 +67,11 @@ class StringAccessor:
         self.accessor = accessor
 
     def encode(self, encoding: str = "utf-8") -> pd.Series:
-        """bytes -> string"""
+        """Encode Series of strings to Series of bytes."""
         return pd.Series(AwkwardExtensionArray(encode(self.accessor.array)))
 
     def decode(self, encoding: str = "utf-8") -> pd.Series:
-        """string -> bytes"""
+        """Decode Series of bytes to Series of strings."""
         return pd.Series(AwkwardExtensionArray(decode(self.accessor.array)))
 
     @staticmethod
