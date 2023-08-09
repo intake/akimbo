@@ -6,7 +6,7 @@ import pandas as pd
 
 from awkward_pandas.array import AwkwardExtensionArray
 from awkward_pandas.dtype import AwkwardDtype
-from awkward_pandas.strings import decode, encode
+from awkward_pandas.strings import StringAccessor
 
 funcs = [n for n in dir(ak) if inspect.isfunction(getattr(ak, n))]
 
@@ -182,42 +182,3 @@ class AwkwardAccessor:
             for _ in (dir(ak))
             if not _.startswith(("_", "ak_")) and not _[0].isupper()
         ] + ["to_column"]
-
-
-class StringAccessor:
-    def __init__(self, acc):
-        self.acc = acc
-
-    def encode(self, encoding="utf-8"):
-        """bytes -> string"""
-        return pd.Series(AwkwardExtensionArray(encode(self.acc.array)))
-
-    def decode(self, encoding="utf-8"):
-        """string -> bytes"""
-        return pd.Series(AwkwardExtensionArray(decode(self.acc.array)))
-
-    def __getattr__(self, attr):
-        if attr == "startswith":
-            attr = "starts_with"
-        elif attr == "endswith":
-            attr = "ends_with"
-        elif attr == "isalpha":
-            attr = "is_alpha"
-
-        fn = getattr(ak.str, attr)
-
-        @functools.wraps(fn)
-        def f(*args, **kwargs):
-            aarr = fn(self.acc.array, *args, **kwargs)
-            if isinstance(aarr, ak.Array):
-                return pd.Series(AwkwardExtensionArray(aarr), index=self.acc._obj.index)
-            return aarr
-
-        return f
-
-    def __dir__(self):
-        return [
-            aname
-            for aname in (dir(ak.str))
-            if not aname.startswith(("_", "akstr_")) and not aname[0].isupper()
-        ]

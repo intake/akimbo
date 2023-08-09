@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+import functools
+from collections.abc import Callable
+
 import awkward as ak
+import pandas as pd
+
+from awkward_pandas.array import AwkwardExtensionArray
 
 
 def _encode(layout):
@@ -39,34 +45,56 @@ def decode(arr, encoding="utf-8"):
     return ak.Array(arr2)
 
 
-# def all_strings(layout):
-#     if layout.is_record:
-#         return all(all_strings(layout[field]) for field in layout.fields)
-#     if layout.is_list or layout.is_option:
-#         if layout.parameter("__array__") == "string":
-#             return True
-#         return all_strings(layout.content)
-#     return layout.parameter("__array__") == "string"
+_SA_METHODMAPPING = {
+    "endswith": "ends_with",
+    "isalnum": "is_alnum",
+    "isalpha": "is_alpha",
+    "isascii": "is_ascii",
+    "isdecimal": "is_decimal",
+    "isdigit": "is_digit",
+    "islower": "is_lower",
+    "isnumeric": "is_numeric",
+    "isprintable": "is_printable",
+    "isspace": "is_space",
+    "istitle": "is_title",
+    "isupper": "is_upper",
+    "startswith": "starts_with",
+}
 
 
-# def all_bytes(layout):
-#     if layout.is_record:
-#         return all(all_strings(layout[field]) for field in layout.fields)
-#     if layout.is_list or layout.is_option:
-#         if layout.parameter("__array__") == "bytestring":
-#             return True
-#         return all_strings(layout.content)
-#     return layout.parameter("__array__") == "bytestring"
+class StringAccessor:
+    def __init__(self, accessor):
+        self.accessor = accessor
 
+    def encode(self, encoding: str = "utf-8") -> pd.Series:
+        """bytes -> string"""
+        return pd.Series(AwkwardExtensionArray(encode(self.accessor.array)))
 
-# def get_split(utf8=True):
-#     import pyarrow.compute
+    def decode(self, encoding: str = "utf-8") -> pd.Series:
+        """string -> bytes"""
+        return pd.Series(AwkwardExtensionArray(decode(self.accessor.array)))
 
-#     def f(stuff, sep=""):
-#         if sep:
-#             return pyarrow.compute.split_pattern(stuff, sep)
-#         if utf8:
-#             return pyarrow.compute.utf8_split_whitespace(stuff)
-#         return pyarrow.compute.ascii_split_whitespace(stuff)
+    @staticmethod
+    def method_name(attr: str) -> str:
+        return _SA_METHODMAPPING.get(attr, attr)
 
-#     return f
+    def __getattr__(self, attr: str) -> Callable:
+        attr = StringAccessor.method_name(attr)
+        fn = getattr(ak.str, attr)
+
+        @functools.wraps(fn)
+        def f(*args, **kwargs):
+            arr = fn(self.accessor.array, *args, **kwargs)
+            idx = self.accessor._obj.index
+            if isinstance(arr, ak.Array):
+                return pd.Series(AwkwardExtensionArray(arr), index=idx)
+            return arr
+
+        return f
+
+    def __dir__(self) -> list[str]:
+        return [
+            aname
+            for aname in (dir(ak.str))
+            if not aname.startswith(("_", "akstr_")) and not aname[0].isupper()
+        ]
