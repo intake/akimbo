@@ -1,87 +1,12 @@
 from __future__ import annotations
 
+import functools
+from collections.abc import Callable
+
 import awkward as ak
+import pandas as pd
 
-string_methods = {}
-
-
-def _make_string_methods(utf8=True):
-    try:
-        import pyarrow.compute
-    except ImportError:
-        return
-
-    if utf8 not in string_methods:
-        if utf8:
-            string_methods[utf8] = {
-                _[5:]
-                for _ in pyarrow._compute.list_functions()
-                if _.startswith("utf8_")
-            }
-        else:
-            string_methods[utf8] = {
-                _[6:]
-                for _ in pyarrow._compute.list_functions()
-                if _.startswith("ascii_")
-            }
-        string_methods[utf8] = {
-            "is" + _[3:] if _.startswith("is_") else _ for _ in string_methods[utf8]
-        }
-    if "binary" not in string_methods:
-        # not certain which of these expects a *list* of str
-        string_methods["binary"] = {
-            _[7:] for _ in pyarrow._compute.list_functions() if _.startswith("binary_")
-        }
-        string_methods["standard"] = {
-            "startswith",
-            "replace",
-            "string_is_ascii",
-            "replace_substring",
-            "replace_substring_regex",
-            "split_pattern",
-            "extract_regex",
-            "count_substring",
-            "count_substring_regex",
-            "endswith",
-            "find_substring",
-            "find_substring_regex",
-            "index_in",
-            "is_in",
-            "match_like",
-            "match_substring",
-            "match_substring_regex",
-            "encode",
-            "decode",
-            "split",
-        }
-
-
-def dir_str(utf8=True):
-    _make_string_methods(utf8)
-    return sorted(
-        string_methods[utf8] | string_methods["binary"] | string_methods["standard"]
-    )
-
-
-def get_func(item, utf8=True):
-    _make_string_methods(utf8)
-    import pyarrow.compute
-
-    if item in string_methods[utf8]:
-        if item.startswith("is"):
-            item = "is_" + item[2:]
-        name = ["ascii_", "utf8_"][utf8] + item
-    elif item in mapping:
-        name = mapping[item]
-        if callable(name):
-            return name
-    elif item == "split":
-        return get_split(utf8)
-    elif item in string_methods["binary"]:
-        name = "binary_" + item
-    elif item in string_methods["standard"]:
-        name = item
-    return getattr(pyarrow.compute, name, None)
+from awkward_pandas.array import AwkwardExtensionArray
 
 
 def _encode(layout):
@@ -94,7 +19,7 @@ def _encode(layout):
         _encode(layout.content)
 
 
-def encode(arr, encoding="utf-8"):
+def encode(arr: ak.Array, encoding: str = "utf-8") -> ak.Array:
     if encoding.lower() not in ["utf-8", "utf8"]:
         raise NotImplementedError
     arr2 = ak.copy(arr)
@@ -112,7 +37,7 @@ def _decode(layout):
         _decode(layout.content)
 
 
-def decode(arr, encoding="utf-8"):
+def decode(arr: ak.Array, encoding: str = "utf-8") -> ak.Array:
     if encoding.lower() not in ["utf-8", "utf8"]:
         raise NotImplementedError
     arr2 = ak.copy(arr)  # to be mutated on creation
@@ -120,40 +45,56 @@ def decode(arr, encoding="utf-8"):
     return ak.Array(arr2)
 
 
-def all_strings(layout):
-    if layout.is_record:
-        return all(all_strings(layout[field]) for field in layout.fields)
-    if layout.is_list or layout.is_option:
-        if layout.parameter("__array__") == "string":
-            return True
-        return all_strings(layout.content)
-    return layout.parameter("__array__") == "string"
-
-
-def all_bytes(layout):
-    if layout.is_record:
-        return all(all_strings(layout[field]) for field in layout.fields)
-    if layout.is_list or layout.is_option:
-        if layout.parameter("__array__") == "bytestring":
-            return True
-        return all_strings(layout.content)
-    return layout.parameter("__array__") == "bytestring"
-
-
-def get_split(utf8=True):
-    import pyarrow.compute
-
-    def f(stuff, sep=""):
-        if sep:
-            return pyarrow.compute.split_pattern(stuff, sep)
-        if utf8:
-            return pyarrow.compute.utf8_split_whitespace(stuff)
-        return pyarrow.compute.ascii_split_whitespace(stuff)
-
-    return f
-
-
-mapping = {
-    "startswith": "starts_with",
+_SA_METHODMAPPING = {
     "endswith": "ends_with",
+    "isalnum": "is_alnum",
+    "isalpha": "is_alpha",
+    "isascii": "is_ascii",
+    "isdecimal": "is_decimal",
+    "isdigit": "is_digit",
+    "islower": "is_lower",
+    "isnumeric": "is_numeric",
+    "isprintable": "is_printable",
+    "isspace": "is_space",
+    "istitle": "is_title",
+    "isupper": "is_upper",
+    "startswith": "starts_with",
 }
+
+
+class StringAccessor:
+    def __init__(self, accessor):
+        self.accessor = accessor
+
+    def encode(self, encoding: str = "utf-8") -> pd.Series:
+        """Encode Series of strings to Series of bytes."""
+        return pd.Series(AwkwardExtensionArray(encode(self.accessor.array)))
+
+    def decode(self, encoding: str = "utf-8") -> pd.Series:
+        """Decode Series of bytes to Series of strings."""
+        return pd.Series(AwkwardExtensionArray(decode(self.accessor.array)))
+
+    @staticmethod
+    def method_name(attr: str) -> str:
+        return _SA_METHODMAPPING.get(attr, attr)
+
+    def __getattr__(self, attr: str) -> Callable:
+        attr = StringAccessor.method_name(attr)
+        fn = getattr(ak.str, attr)
+
+        @functools.wraps(fn)
+        def f(*args, **kwargs):
+            arr = fn(self.accessor.array, *args, **kwargs)
+            idx = self.accessor._obj.index
+            if isinstance(arr, ak.Array):
+                return pd.Series(AwkwardExtensionArray(arr), index=idx)
+            return arr
+
+        return f
+
+    def __dir__(self) -> list[str]:
+        return [
+            aname
+            for aname in (dir(ak.str))
+            if not aname.startswith(("_", "akstr_")) and not aname[0].isupper()
+        ]
