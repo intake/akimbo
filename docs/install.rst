@@ -14,7 +14,7 @@ requirements will be enforced. The strict requirements are:
 From PyPI
 ~~~~~~~~~
 
-.. code::
+.. code-block:: none
 
    $ pip install awkward-pandas
 

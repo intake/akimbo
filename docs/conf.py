@@ -43,7 +43,7 @@ html_static_path = ["_static"]
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "numpy": ("https://numpy.org/doc/stable", None),
-    "awkward": ("https://awkward-array.readthedocs.io/en/latest/", None),
+    "awkward": ("https://awkward-array.org/doc/stable/", None),
     "pandas": ("https://pandas.pydata.org/docs/", None),
 }
 
