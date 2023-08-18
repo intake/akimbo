@@ -21,8 +21,9 @@ From PyPI
 From conda-forge
 ~~~~~~~~~~~~~~~~
 
-``awkward-pandas`` will be added to conda-forge when ``awkward
->=2.0.0`` is available.
+.. code-block:: none
+
+   $ conda install awkward-pandas -c conda-forge
 
 Optional dependencies
 ~~~~~~~~~~~~~~~~~~~~~
