@@ -16,3 +16,5 @@ python:
     path: .
     extra_requirements:
     - docs
+    - complete
+    - test
