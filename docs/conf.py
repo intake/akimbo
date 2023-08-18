@@ -29,6 +29,7 @@ exclude_patterns = [
     "Thumbs.db",
     ".DS_Store",
     "**.ipynb_checkpoints",
+    "**awkward-pandas-demo.ipynb",
 ]
 
 
