@@ -8,3 +8,8 @@
 See the [quick
 start](https://awkward-pandas.readthedocs.io/en/latest/quickstart.html)
 in the documentation for an introduction to awkward-pandas.
+
+Acknowledgements
+----------------
+
+Support for this work was provided by NSF grant [OAC-2103945](https://www.nsf.gov/awardsearch/showAward?AWD_ID=2103945).
