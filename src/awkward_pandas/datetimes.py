@@ -83,15 +83,19 @@ class DatetimeAccessor:
         def wrapper(*args, **kwargs):
             arrow_array = ak.to_arrow(self.accessor.array, extensionarray=False)
 
-            arrow_args, arrow_kwargs = [], {}
+            new_args, new_kwargs = [], {}
             for arg in args:
                 if isinstance(arg, pd.Series) and arg.dtype == "awkward":
-                    arrow_args.append(ak.to_arrow(arg.ak.array, extensionarray=False))
+                    new_args.append(ak.to_arrow(arg.ak.array, extensionarray=False))
+                else:
+                    new_args.append(arg)
             for k, v in kwargs.items():
                 if isinstance(v, pd.Series) and v.dtype == "awkward":
-                    arrow_kwargs[k] = ak.to_arrow(v.ak.array, extensionarray=False)
+                    new_kwargs[k] = ak.to_arrow(v.ak.array, extensionarray=False)
+                else:
+                    new_kwargs[k] = v
 
-            result = fn(arrow_array, *arrow_args, **arrow_kwargs)
+            result = fn(arrow_array, *new_args, **new_kwargs)
             idx = self.accessor._obj.index
             return pd.Series(AwkwardExtensionArray(ak.from_arrow(result)), index=idx)
 
