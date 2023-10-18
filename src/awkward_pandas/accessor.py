@@ -7,6 +7,7 @@ import awkward as ak
 import pandas as pd
 
 from awkward_pandas.array import AwkwardExtensionArray
+from awkward_pandas.datetimes import DatetimeAccessor
 from awkward_pandas.dtype import AwkwardDtype
 from awkward_pandas.strings import StringAccessor
 
@@ -142,6 +143,10 @@ class AwkwardAccessor:
     @property
     def str(self) -> StringAccessor:
         return StringAccessor(self)
+
+    @property
+    def dt(self) -> DatetimeAccessor:
+        return DatetimeAccessor(self)
 
     def __getattr__(self, item):
         """Call awkward namespace function on a series"""
