@@ -29,7 +29,7 @@ def merge(dataframe: pd.DataFrame, name: str | None = None) -> pd.Series:
         if dataframe[c].dtype == "awkward":
             out[c] = dataframe[c].values._data
         elif dataframe[c].dtype == "string[pyarrow]":
-            out[c] = ak.from_arrow(dataframe[c].values._data)
+            out[c] = ak.from_arrow(dataframe[c].values._pa_array)
         elif dataframe[c].dtype == np.dtype("O"):
             out[c] = ak.from_iter(dataframe[c])
         else:
