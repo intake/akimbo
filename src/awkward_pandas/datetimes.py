@@ -22,7 +22,7 @@ PYARROW_FUNCTIONS = [
     "run_end_decode",
     "run_end_encode",
     "strftime",
-    "strptime    ",
+    "strptime",
     # COMPONENT_EXTRACTION
     "day",
     "day_of_week",
