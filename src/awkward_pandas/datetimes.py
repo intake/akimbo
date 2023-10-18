@@ -67,7 +67,11 @@ class DatetimeAccessor:
         self.accessor = accessor
 
     def __dir__(self) -> list[str]:
-        return sorted(PYARROW_FUNCTIONS)
+        return sorted(
+            [x for x in dir(type(self)) if not x.startswith("_")]
+            + dir(super())
+            + PYARROW_FUNCTIONS
+        )
 
     def __getattr__(self, attr: str) -> Any:
         if attr not in PYARROW_FUNCTIONS:
