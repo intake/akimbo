@@ -83,12 +83,18 @@ class DatetimeAccessor:
         def wrapper(*args, **kwargs):
             arrow_array = ak.to_arrow(self.accessor.array, extensionarray=False)
 
-            new_args, new_kwargs = [], {}
+            # parse args so that other series backed by awkward are
+            # converted to arrow array objects.
+            new_args = []
             for arg in args:
                 if isinstance(arg, pd.Series) and arg.dtype == "awkward":
                     new_args.append(ak.to_arrow(arg.ak.array, extensionarray=False))
                 else:
                     new_args.append(arg)
+
+            # parse kwargs so that other series backed by awkward are
+            # converted to arrow array objects.
+            new_kwargs = {}
             for k, v in kwargs.items():
                 if isinstance(v, pd.Series) and v.dtype == "awkward":
                     new_kwargs[k] = ak.to_arrow(v.ak.array, extensionarray=False)
