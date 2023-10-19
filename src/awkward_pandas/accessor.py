@@ -189,8 +189,11 @@ class AwkwardAccessor:
         return result
 
     def __dir__(self) -> list[str]:
-        return [
-            _
-            for _ in (dir(ak))
-            if not _.startswith(("_", "ak_")) and not _[0].isupper()
-        ] + ["to_column"]
+        return sorted(
+            [
+                _
+                for _ in (dir(ak))
+                if not _.startswith(("_", "ak_")) and not _[0].isupper()
+            ]
+            + ["to_column", "dt"]
+        )
