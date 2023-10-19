@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import awkward as ak
 import pandas as pd
@@ -14,10 +14,11 @@ if TYPE_CHECKING:
 
 
 class DatetimeAccessor:
-    def __init__(self, accessor: AwkwardAccessor) -> None:
-        self.accessor = accessor
+    def __init__(self, ak_accessor: AwkwardAccessor) -> None:
+        self.ak_accessor = ak_accessor
+        self.index = ak_accessor._obj.index
 
-    def cast(self, target_type=None, safe=None, options=None, memory_pool=None):
+    def cast(self, target_type=None, safe=None, options=None):
         raise NotImplementedError("TODO")
 
     def ceil_temporal(
@@ -30,7 +31,6 @@ class DatetimeAccessor:
         ceil_is_strictly_greater=False,
         calendar_based_origin=False,
         options=None,
-        memory_pool=None,
     ):
         raise NotImplementedError("TODO")
 
@@ -44,7 +44,6 @@ class DatetimeAccessor:
         ceil_is_strictly_greater=False,
         calendar_based_origin=False,
         options=None,
-        memory_pool=None,
     ):
         raise NotImplementedError("TODO")
 
@@ -58,11 +57,10 @@ class DatetimeAccessor:
         ceil_is_strictly_greater=False,
         calendar_based_origin=False,
         options=None,
-        memory_pool=None,
     ):
         raise NotImplementedError("TODO")
 
-    def run_end_decode(self, array, /, *, memory_pool=None):
+    def run_end_decode(self, array):
         raise NotImplementedError("TODO")
 
     def run_end_encode(
@@ -71,7 +69,6 @@ class DatetimeAccessor:
         run_end_type=pa.int32(),
         *,
         options=None,
-        memory_pool=None,
     ):
         raise NotImplementedError("TODO")
 
@@ -82,7 +79,6 @@ class DatetimeAccessor:
         locale="C",
         *,
         options=None,
-        memory_pool=None,
     ):
         raise NotImplementedError("TODO")
 
@@ -94,11 +90,10 @@ class DatetimeAccessor:
         error_is_null=False,
         *,
         options=None,
-        memory_pool=None,
     ):
         raise NotImplementedError("TODO")
 
-    def day(self, /, *, memory_pool=None):
+    def day(self):
         raise NotImplementedError("TODO")
 
     def day_of_week(
@@ -108,56 +103,55 @@ class DatetimeAccessor:
         count_from_zero=True,
         week_start=1,
         options=None,
-        memory_pool=None,
     ):
         raise NotImplementedError("TODO")
 
-    def day_of_year(self, /, *, memory_pool=None):
+    def day_of_year(self):
         raise NotImplementedError("TODO")
 
-    def hour(self, /, *, memory_pool=None):
+    def hour(self):
         raise NotImplementedError("TODO")
 
-    def iso_week(self, /, *, memory_pool=None):
+    def iso_week(self):
         raise NotImplementedError("TODO")
 
-    def iso_year(self, /, *, memory_pool=None):
+    def iso_year(self):
         raise NotImplementedError("TODO")
 
-    def iso_calendar(self, /, *, memory_pool=None):
+    def iso_calendar(self):
         raise NotImplementedError("TODO")
 
-    def is_leap_year(self, /, *, memory_pool=None):
+    def is_leap_year(self):
         raise NotImplementedError("TODO")
 
-    def microsecond(self, /, *, memory_pool=None):
+    def microsecond(self):
         raise NotImplementedError("TODO")
 
-    def millisecond(self, /, *, memory_pool=None):
+    def millisecond(self):
         raise NotImplementedError("TODO")
 
-    def minute(self, /, *, memory_pool=None):
+    def minute(self):
         raise NotImplementedError("TODO")
 
-    def month(self, /, *, memory_pool=None):
+    def month(self):
         raise NotImplementedError("TODO")
 
-    def nanosecond(self, /, *, memory_pool=None):
+    def nanosecond(self):
         raise NotImplementedError("TODO")
 
-    def quarter(self, /, *, memory_pool=None):
+    def quarter(self):
         raise NotImplementedError("TODO")
 
-    def second(self, /, *, memory_pool=None):
+    def second(self):
         raise NotImplementedError("TODO")
 
-    def subsecond(self, /, *, memory_pool=None):
+    def subsecond(self):
         raise NotImplementedError("TODO")
 
-    def us_week(self, /, *, memory_pool=None):
+    def us_week(self):
         raise NotImplementedError("TODO")
 
-    def us_year(self, /, *, memory_pool=None):
+    def us_year(self):
         raise NotImplementedError("TODO")
 
     def week(
@@ -168,49 +162,51 @@ class DatetimeAccessor:
         count_from_zero=False,
         first_week_is_fully_in_year=False,
         options=None,
-        memory_pool=None,
     ):
         raise NotImplementedError("TODO")
 
-    def year(self, /, *, memory_pool=None):
+    def year(self):
         raise NotImplementedError("TODO")
 
-    def year_month_day(self, /, *, memory_pool=None):
+    def year_month_day(self):
         raise NotImplementedError("TODO")
 
-    def day_time_interval_between(self, end, /, *, memory_pool=None):
+    def day_time_interval_between(self, end):
         raise NotImplementedError("TODO")
 
-    def days_between(self, end, /, *, memory_pool=None):
+    def days_between(self, end):
         raise NotImplementedError("TODO")
 
-    def hours_between(self, end, /, *, memory_pool=None):
+    def hours_between(self, end):
         raise NotImplementedError("TODO")
 
-    def microseconds_between(self, end, /, *, memory_pool=None):
+    def microseconds_between(self, end):
         raise NotImplementedError("TODO")
 
-    def milliseconds_between(self, end, /, *, memory_pool=None):
+    def milliseconds_between(self, end):
         raise NotImplementedError("TODO")
 
-    def minutes_between(self, end, /, *, memory_pool=None):
+    def minutes_between(self, end):
         raise NotImplementedError("TODO")
 
-    def month_day_nano_interval_between(self, end, /, *, memory_pool=None):
+    def month_day_nano_interval_between(self, end):
         raise NotImplementedError("TODO")
 
-    def month_interval_between(self, end, /, *, memory_pool=None):
+    def month_interval_between(self, end):
         raise NotImplementedError("TODO")
 
-    def nanoseconds_between(self, end, /, *, memory_pool=None):
-        arr, args, kwargs = _arrowize(self, end, memory_pool=memory_pool)
-        return _as_series(pc.nanoseconds_between(arr, *args, **kwargs))
+    def nanoseconds_between(self, end):
+        arr, args, kwargs = _arrowize(self, end)
+        return _as_series(
+            pc.nanoseconds_between(arr, *args, **kwargs),
+            index=self.index,
+        )
 
-    def quarters_between(self, end, /, *, memory_pool=None):
+    def quarters_between(self, end):
         raise NotImplementedError("TODO")
 
-    def seconds_between(self, end, /, *, memory_pool=None):
-        arr, args, kwargs = _arrowize(self, end, memory_pool=memory_pool)
+    def seconds_between(self, end):
+        arr, args, kwargs = _arrowize(self, end)
         return _as_series(pc.seconds_between(arr, *args, **kwargs))
 
     def weeks_between(
@@ -221,62 +217,12 @@ class DatetimeAccessor:
         count_from_zero=True,
         week_start=1,
         options=None,
-        memory_pool=None,
     ):
         raise NotImplementedError("TODO")
 
-    def years_between(self, end, /, *, memory_pool=None):
-        arr, args, kwargs = _arrowize(self, end, memory_pool=memory_pool)
+    def years_between(self, end):
+        arr, args, kwargs = _arrowize(self, end)
         return _as_series(pc.years_between(arr, *args, **kwargs))
-
-    # def __getattr__(self, attr: str) -> Callable:
-    #     if attr not in dir(self):
-    #         raise AttributeError
-
-    #     fn = getattr(pc, attr, None)
-
-    #     if fn:
-
-    #         @functools.wraps(fn)
-    #         def wrapper(*args, **kwargs):
-    #             try:
-    #                 arrow_array = ak.to_arrow(self.accessor.array, extensionarray=False)
-    #             except ArrowNotImplementedError("TODO") as err:
-    #                 msg = (
-    #                     "Could not convert data to arrow\n"
-    #                     "Arrow requires datetime with units: "
-    #                     "seconds, milliseconds, microseconds, nanoseconds"
-    #                 )
-    #                 raise ArrowNotImplementedError(msg)
-
-    #             # parse args so that other series backed by awkward are
-    #             # converted to arrow array objects.
-    #             new_args = []
-    #             for arg in args:
-    #                 if isinstance(arg, pd.Series) and arg.dtype == "awkward":
-    #                     new_args.append(ak.to_arrow(arg.ak.array, extensionarray=False))
-    #                 else:
-    #                     new_args.append(arg)
-
-    #             # parse kwargs so that other series backed by awkward are
-    #             # converted to arrow array objects.
-    #             new_kwargs = {}
-    #             for k, v in kwargs.items():
-    #                 if isinstance(v, pd.Series) and v.dtype == "awkward":
-    #                     new_kwargs[k] = ak.to_arrow(v.ak.array, extensionarray=False)
-    #                 else:
-    #                     new_kwargs[k] = v
-
-    #             result = fn(arrow_array, *new_args, **new_kwargs)
-    #             idx = self.accessor._obj.index
-    #             return pd.Series(
-    #                 AwkwardExtensionArray(ak.from_arrow(result)), index=idx
-    #             )
-
-    #     else:
-    #         raise AttributeError
-
-    #     return wrapper
 
 
 def _to_arrow(array):
@@ -289,7 +235,11 @@ def _make_unit_compatible(array):
     return array
 
 
-def _arrowize(dta, *args, **kwargs):
+def _arrowize(
+    dta: DatetimeAccessor,
+    *args: Any,
+    **kwargs: Any,
+) -> tuple[Any, tuple[Any, ...], dict[str, Any]]:
     """Convert objects to arrow arrays.
 
     Parameters
@@ -318,7 +268,7 @@ def _arrowize(dta, *args, **kwargs):
         New keyword arguments with necessary conversions.
 
     """
-    primary_as_arrow = _to_arrow(dta.accessor.array)
+    primary_as_arrow = _to_arrow(dta.ak_accessor.array)
 
     # parse args so that other series backed by awkward are
     # converted to arrow array objects.
@@ -338,10 +288,10 @@ def _arrowize(dta, *args, **kwargs):
         else:
             new_kwargs[k] = v
 
-    return primary_as_arrow, new_args, new_kwargs
+    return primary_as_arrow, tuple(new_args), new_kwargs
 
 
-def _as_series(pyarrow_result):
+def _as_series(pyarrow_result, index):
     """Convert pyarrow Array back in to awkward Series.
 
     Parameters
@@ -355,4 +305,4 @@ def _as_series(pyarrow_result):
         Series of type :obj:`~awkward_pandas.AwkwardDtype`.
 
     """
-    return pd.Series(AwkwardExtensionArray(ak.from_arrow(pyarrow_result)))
+    return pd.Series(AwkwardExtensionArray(ak.from_arrow(pyarrow_result)), index=index)
