@@ -34,4 +34,4 @@ jobs:
         pip list
     - name: test
       run: |
-        python -m pytest
+        python -m pytest -v

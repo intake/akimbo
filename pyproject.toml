@@ -35,7 +35,10 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 complete = [
-  "awkward-pandas[strings,parquet]",
+  "awkward-pandas[strings,parquet,dask]",
+]
+dask = [
+  "dask[dataframe]",
 ]
 parquet = [
   "pyarrow",
@@ -47,6 +50,7 @@ test = [
   "awkward-pandas[complete]",
   "pytest >=6.0",
   "pytest-cov >=3.0.0",
+  "distributed"
 ]
 docs = [
   "sphinx",
