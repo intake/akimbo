@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import pandas._testing as tm
 from pandas.tests.extension.base import BaseConstructorsTests, BaseDtypeTests
 from pandas.tests.extension.base.casting import BaseCastingTests  # noqa
 from pandas.tests.extension.base.dim2 import Dim2CompatTests  # noqa
@@ -46,15 +47,15 @@ class TestAwkwardConstructors(BaseConstructorsTests):
 
         expected = pd.Series(data)
         result = pd.Series(list(data), dtype=dtype)
-        assert result.tolist() == expected.tolist()
+        tm.assert_series_equal(result, expected)
 
         result = pd.Series(list(data), dtype=str(dtype))
-        assert result.tolist() == expected.tolist()
+        tm.assert_series_equal(result, expected)
 
         # this is the test that breaks the upstream version
         # expected = pd.DataFrame(data).astype(dtype)
         # result = pd.DataFrame(list(data), dtype=dtype)
-        # self.assert_frame_equal(result, expected)
+        # tm.assert_frame_equal(result, expected)
 
 
 # class TestAwkwardBaseCastingTests(BaseCastingTests):
