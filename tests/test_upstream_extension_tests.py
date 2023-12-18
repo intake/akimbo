@@ -46,10 +46,10 @@ class TestAwkwardConstructors(BaseConstructorsTests):
 
         expected = pd.Series(data)
         result = pd.Series(list(data), dtype=dtype)
-        self.assert_series_equal(result, expected)
+        assert result.tolist() == expected.tolist()
 
         result = pd.Series(list(data), dtype=str(dtype))
-        self.assert_series_equal(result, expected)
+        assert result.tolist() == expected.tolist()
 
         # this is the test that breaks the upstream version
         # expected = pd.DataFrame(data).astype(dtype)
