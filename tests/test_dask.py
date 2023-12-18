@@ -31,3 +31,16 @@ def test_accessor():
 
     out = ddf.s.ak.count(axis=1).compute()
     assert out.tolist() == [1, 2, 1, 2]
+
+
+def test_distributed():
+    distributed = pytest.importorskip("distributed")
+    with distributed.Client(n_workers=1, threads_per_worker=1):
+        data = [[0], [0, 1]] * 2
+        s = pd.Series(data, dtype="awkward")
+        df = pd.DataFrame({"s": s})
+        ddf = dd.from_pandas(df, 2)
+        out = ddf.s.ak.count()
+        assert out.compute().tolist() == [3, 3]
+        out = ddf.s.ak.count(axis=1).compute()
+        assert out.tolist() == [1, 2, 1, 2]
