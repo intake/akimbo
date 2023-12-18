@@ -24,26 +24,35 @@ classifiers = [
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-    "awkward>=2.0.0",
+    "awkward>=2.3.2",
     "pandas>=1.2",
 ]
 dynamic = ["version"]
 
 [project.optional-dependencies]
 complete = [
-    "pyarrow",
-    "pytest >=6.0",
-    "pytest-cov >=3.0.0",
-    "dask"
+  "awkward-pandas[strings,parquet]",
+]
+parquet = [
+  "pyarrow",
+]
+strings = [
+  "pyarrow >=7.0.0",
+]
+test = [
+  "awkward-pandas[complete]",
+  "pytest >=6.0",
+  "pytest-cov >=3.0.0",
 ]
 docs = [
-    "sphinx",
-    "furo",
-    "nbsphinx",
-    "ipython",
+  "sphinx",
+  "furo",
+  "nbsphinx",
+  "ipython",
 ]
 
 [project.urls]

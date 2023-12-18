@@ -3,40 +3,44 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
+pytest.importorskip("pyarrow")
+
 
 @pytest.mark.parametrize("binary", [True, False])
 @pytest.mark.parametrize("method", ["upper", "capitalize", "isalpha"])
 def test_unary_methods(method, binary):
     s = pd.Series(["hello world", "oi"], dtype="awkward")
     if binary:
-        s = s.ak.encode()
-    out = getattr(s.ak, method)()
+        s = s.ak.str.encode()
+    out = getattr(s.ak.str, method)()
     expected = [getattr(_, method)() for _ in s.tolist()]
     assert out.tolist() == expected
 
 
 def test_with_argument():
     s = pd.Series(["hello world", "oi"], dtype="awkward")
-    out = s.ak.startswith("hello")
+    out1 = s.ak.str.starts_with("hello")
+    out2 = s.ak.str.startswith("hello")
     expected = [_.startswith("hello") for _ in s.tolist()]
-    assert out.tolist() == expected
+    assert out1.tolist() == expected
+    assert out2.tolist() == expected
 
 
 def test_encode_decode():
     s = pd.Series(["hello world", "oi"], dtype="awkward")
-    s2 = s.ak.encode()
+    s2 = s.ak.str.encode()
     assert s2.tolist() == [_.encode() for _ in s.tolist()]
-    s3 = s2.ak.decode()
+    s3 = s2.ak.str.decode()
     assert (s == s3).all()
 
 
 def test_split():
     s = pd.Series(["hello world", "oio", ""], dtype="awkward")
-    s2 = s.ak.split()
+    s2 = s.ak.str.split_whitespace()
     assert s2.tolist() == [["hello", "world"], ["oio"], [""]]
-    s2 = s.ak.split("i")
+    s2 = s.ak.str.split_pattern("i")
     assert s2.tolist() == [["hello world"], ["o", "o"], [""]]
 
     s = pd.Series([b"hello world", b"oio", b""], dtype="awkward")
-    s2 = s.ak.split()
+    s2 = s.ak.str.split_whitespace()
     assert s2.tolist() == [[b"hello", b"world"], [b"oio"], [b""]]

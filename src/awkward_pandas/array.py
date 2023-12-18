@@ -157,7 +157,6 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
         return type(self)(self._data.__array_ufunc__(*inputs, **kwargs))
 
     def max(self, **kwargs):
-        print("max?")
         return ak.max(self._data, **kwargs)
 
     def min(self, **kwargs):

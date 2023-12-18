@@ -1,3 +1,5 @@
+.dir-locals.el
+
 # setuptools_scm
 src/awkward_pandas/version.py
 
