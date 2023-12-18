@@ -35,7 +35,10 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 complete = [
-  "awkward-pandas[strings,parquet]",
+  "awkward-pandas[strings,parquet,dask]",
+]
+dask = [
+  "dask[dataframe]",
 ]
 parquet = [
   "pyarrow",
