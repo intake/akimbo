@@ -16,7 +16,7 @@ class AwkwardOperations:
             _
             for _ in (dir(ak))
             if not _.startswith(("_", "ak_")) and not _[0].isupper()
-        ] + ["apply", "array", "to_column"]
+        ] + ["apply", "array"]
 
     def apply(self, fn: Callable) -> pl.DataFrame:
         """Perform function on all the values of the series"""
@@ -43,9 +43,15 @@ class AwkwardOperations:
             @functools.wraps(func)
             def f(*others, **kwargs):
                 others = [
-                    other.ak.array if isinstance(other, pl.DataFrame) else other
+                    other.ak.array
+                    if isinstance(other, (pl.DataFrame, pl.Series))
+                    else other
                     for other in others
                 ]
+                kwargs = {
+                    k: v.ak.array if isinstance(v, (pl.DataFrame, pl.Series)) else v
+                    for k, v in kwargs.items()
+                }
 
                 ak_arr = func(self.array, *others, **kwargs)
                 if isinstance(ak_arr, ak.Array):
