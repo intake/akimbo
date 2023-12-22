@@ -21,12 +21,12 @@ class AwkwardOperations:
     def apply(self, fn: Callable) -> pl.DataFrame:
         """Perform function on all the values of the series"""
         out = fn(self.array)
-        result = pl.from_arrow(ak.to_arrow(out, extensionarray=False))
-        return result
+        return ak_to_polars(out)
 
     def __getitem__(self, item):
+        # scalars?
         out = self.array.__getitem__(item)
-        result = pl.from_arrow(ak.to_arrow(out, extensionarray=False))
+        result = ak_to_polars(out)
         return result
 
     @property
@@ -55,10 +55,13 @@ class AwkwardOperations:
 
                 ak_arr = func(self.array, *others, **kwargs)
                 if isinstance(ak_arr, ak.Array):
-                    return pl.from_arrow(ak.to_arrow(ak_arr, extensionarray=False))
+                    return ak_to_polars(ak_arr)
                 return ak_arr
 
         else:
-            raise AttributeError
-
+            raise AttributeError(item)
         return f
+
+
+def ak_to_polars(arr: ak.Array) -> pl.DataFrame | pl.Series:
+    return pl.from_arrow(ak.to_arrow(arr, extensionarray=False))
