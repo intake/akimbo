@@ -12,6 +12,7 @@ from pandas.core.arrays.base import (
     ExtensionScalarOpsMixin,
     set_function_name,
 )
+from pandas.core.dtypes.dtypes import ArrowDtype
 from pandas.core.dtypes.generic import ABCDataFrame, ABCIndex, ABCSeries
 
 from awkward_pandas.dtype import AwkwardDtype
@@ -34,12 +35,13 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
             pass to awkward to generate the internal array. If a JSON string,
             parse it using awkward.
         """
-
         self._dtype = AwkwardDtype()
         if isinstance(data, type(self)):
             self._data = data._data
         elif isinstance(data, ak.Array):
             self._data = data
+        elif hasattr(data, "dtype") and isinstance(data.dtype, ArrowDtype):
+            self._data = ak.from_arrow(data._pa_array)
         elif isinstance(data, dict):
             self._data = ak.Array(data)
         elif isinstance(data, str):
