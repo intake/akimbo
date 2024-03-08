@@ -129,7 +129,7 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
 
     @classmethod
     def _concat_same_type(cls, to_concat):
-        return cls(ak.concatenate(to_concat))
+        return cls(ak.concatenate([a._data for a in to_concat]))
 
     @property
     def ndim(self) -> Literal[1]:
