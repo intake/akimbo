@@ -16,9 +16,12 @@ def register_dtype():
 
 
 try:
-    from dask.dataframe.accessor import Accessor
+    from dask_expr._accessor import Accessor
 except (ImportError, ModuleNotFoundError):
-    Accessor = object
+    try:
+        from dask.dataframe.accessor import Accessor
+    except (ImportError, ModuleNotFoundError):
+        Accessor = object
 
 
 class DaskAwkwardAccessor(Accessor):
