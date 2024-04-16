@@ -4,12 +4,22 @@ from typing import Callable, Iterable
 import awkward as ak
 import polars as pl
 
+from awkward_pandas.mixin import ArithmeticMixin
+
 
 @pl.api.register_series_namespace("ak")
 @pl.api.register_dataframe_namespace("ak")
-class AwkwardOperations:
+class AwkwardOperations(ArithmeticMixin):
     def __init__(self, df: pl.DataFrame):
         self._df = df
+
+    def __array_function__(self, *args, **kwargs):
+        return self.array.__array_function__(*args, **kwargs)
+
+    def __array_ufunc__(self, *args, **kwargs):
+        if args[1] == "__call__":
+            return args[0](self.array, *args[3:], **kwargs)
+        raise NotImplementedError
 
     def __dir__(self) -> Iterable[str]:
         return [
@@ -61,6 +71,20 @@ class AwkwardOperations:
         else:
             raise AttributeError(item)
         return f
+
+    @classmethod
+    def _create_op(cls, op):
+        def run(self, *args, **kwargs):
+            return ak_to_polars(op(self.array, *args, **kwargs))
+
+        return run
+
+    _create_arithmetic_method = _create_op
+    _create_comparison_method = _create_op
+    _create_logical_method = _create_op
+
+
+AwkwardOperations._add_all()
 
 
 def ak_to_polars(arr: ak.Array) -> pl.DataFrame | pl.Series:
