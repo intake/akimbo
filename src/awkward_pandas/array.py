@@ -110,6 +110,14 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
     def _reduce(self, name: str, *, skipna: bool = True, axis=None, **kwargs):
         return getattr(ak, name)(self._data, **kwargs)
 
+    def _explode(self):
+        nums = ak.num(self._data, axis=1)
+        nums_filled = ak.fill_none(nums, 0)
+        data = ak.where(nums_filled == 0, [[None]], self._data)
+        flat = ak.flatten(data)
+        arr = type(self)(flat)
+        return arr, ak.num(data, axis=1)
+
     @property
     def dtype(self) -> AwkwardDtype:
         return self._dtype
