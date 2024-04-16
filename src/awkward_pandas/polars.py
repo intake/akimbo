@@ -1,5 +1,5 @@
 import functools
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Union
 
 import awkward as ak
 import polars as pl
@@ -87,5 +87,5 @@ class AwkwardOperations(ArithmeticMixin):
 AwkwardOperations._add_all()
 
 
-def ak_to_polars(arr: ak.Array) -> pl.DataFrame | pl.Series:
+def ak_to_polars(arr: ak.Array) -> Union[pl.DataFrame, pl.Series]:
     return pl.from_arrow(ak.to_arrow(arr, extensionarray=False))
