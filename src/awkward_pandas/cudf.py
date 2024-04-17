@@ -32,13 +32,12 @@ class AwkwardAccessor(ArithmeticMixin):
     def apply(self, fn: Callable) -> Series:
         """Perform function on all the values of the series"""
         out = fn(self.array)
-        return ak.to_cudf(out)
+        return maybe_to_cudf(out)
 
     def __getitem__(self, item):
         # scalars?
         out = self.array.__getitem__(item)
-        result = ak.to_cudf(out)
-        return result
+        return maybe_to_cudf(out)
 
     def __getattr__(self, item):
         if item not in dir(self):
@@ -61,9 +60,7 @@ class AwkwardAccessor(ArithmeticMixin):
                 }
 
                 ak_arr = func(self.array, *others, **kwargs)
-                if isinstance(ak_arr, ak.Array):
-                    return ak.to_cudf(ak_arr)
-                return ak_arr
+                return maybe_to_cudf(ak_arr)
 
         else:
             raise AttributeError(item)
@@ -72,13 +69,20 @@ class AwkwardAccessor(ArithmeticMixin):
     @classmethod
     def _create_op(cls, op):
         def run(self, *args, **kwargs):
-            return ak.to_cudf(op(self.array, *args, **kwargs))
+            return maybe_to_cudf(op(self.array, *args, **kwargs))
 
         return run
 
     _create_arithmetic_method = _create_op
     _create_comparison_method = _create_op
     _create_logical_method = _create_op
+
+
+def maybe_to_cudf(x):
+    if isinstance(x, ak.Array):
+        return ak.to_cudf(x)
+    return x
+
 
 
 AwkwardAccessor._add_all()
