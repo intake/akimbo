@@ -7,7 +7,7 @@ name = "awkward-pandas"
 description = "Awkward Array Pandas Extension"
 readme = "README.md"
 license = "BSD-3-Clause"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 authors = [
     { name = "Doug Davis", email = "ddavis@ddavis.io" },
     { name = "Martin Durant", email = "mdurant@anaconda.com" },
@@ -21,10 +21,10 @@ classifiers = [
     "License :: OSI Approved :: BSD License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
@@ -35,7 +35,10 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 complete = [
-  "awkward-pandas[strings,parquet]",
+  "awkward-pandas[strings,parquet,dask]",
+]
+dask = [
+  "dask[dataframe]",
 ]
 parquet = [
   "pyarrow",
@@ -47,6 +50,8 @@ test = [
   "awkward-pandas[complete]",
   "pytest >=6.0",
   "pytest-cov >=3.0.0",
+  "distributed",
+  "polars"
 ]
 docs = [
   "sphinx",
@@ -87,7 +92,7 @@ line_length = 88
 src_paths = ["src", "tests"]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
 files = ["src", "tests"]
 warn_unused_configs = true
 show_error_codes = true

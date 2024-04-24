@@ -12,6 +12,7 @@ from pandas.core.arrays.base import (
     ExtensionScalarOpsMixin,
     set_function_name,
 )
+from pandas.core.dtypes.dtypes import ArrowDtype
 from pandas.core.dtypes.generic import ABCDataFrame, ABCIndex, ABCSeries
 
 from awkward_pandas.dtype import AwkwardDtype
@@ -34,12 +35,13 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
             pass to awkward to generate the internal array. If a JSON string,
             parse it using awkward.
         """
-
         self._dtype = AwkwardDtype()
         if isinstance(data, type(self)):
             self._data = data._data
         elif isinstance(data, ak.Array):
             self._data = data
+        elif hasattr(data, "dtype") and isinstance(data.dtype, ArrowDtype):
+            self._data = ak.from_arrow(data._pa_array)
         elif isinstance(data, dict):
             self._data = ak.Array(data)
         elif isinstance(data, str):
@@ -108,6 +110,14 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
     def _reduce(self, name: str, *, skipna: bool = True, axis=None, **kwargs):
         return getattr(ak, name)(self._data, **kwargs)
 
+    def _explode(self):
+        nums = ak.num(self._data, axis=1)
+        nums_filled = ak.fill_none(nums, 0)
+        data = ak.where(nums_filled == 0, [[None]], self._data)
+        flat = ak.flatten(data)
+        arr = type(self)(flat)
+        return arr, ak.num(data, axis=1)
+
     @property
     def dtype(self) -> AwkwardDtype:
         return self._dtype
@@ -127,7 +137,7 @@ class AwkwardExtensionArray(ExtensionArray, ExtensionScalarOpsMixin):
 
     @classmethod
     def _concat_same_type(cls, to_concat):
-        return cls(ak.concatenate(to_concat))
+        return cls(ak.concatenate([a._data for a in to_concat]))
 
     @property
     def ndim(self) -> Literal[1]:
