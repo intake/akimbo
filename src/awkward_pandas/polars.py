@@ -1,50 +1,20 @@
 import functools
-from typing import Callable, Iterable, Union
 
 import awkward as ak
 import polars as pl
 
-from awkward_pandas.mixin import ArithmeticMixin
+from awkward_pandas.mixin import Accessor
 
 
 @pl.api.register_series_namespace("ak")
 @pl.api.register_dataframe_namespace("ak")
-class AwkwardOperations(ArithmeticMixin):
-    def __init__(self, df: pl.DataFrame | pl.Series):
-        self._obj = df
-
-    def __array_function__(self, *args, **kwargs):
-        return self.array.__array_function__(*args, **kwargs)
-
-    def __array_ufunc__(self, *args, **kwargs):
-        if args[1] == "__call__":
-            return args[0](self.array, *args[3:], **kwargs)
-        raise NotImplementedError
-
-    def __dir__(self) -> Iterable[str]:
-        return [
-            _
-            for _ in (dir(ak))
-            if not _.startswith(("_", "ak_")) and not _[0].isupper()
-        ] + ["apply", "array"]
-
-    def apply(self, fn: Callable) -> pl.DataFrame:
-        """Perform function on all the values of the series"""
-        out = fn(self.array)
-        return ak_to_polars(out)
-
-    def __getitem__(self, item):
-        # scalars?
-        out = self.array.__getitem__(item)
-        result = ak_to_polars(out)
-        return result
-
-    @property
-    def array(self):
-        return ak.from_arrow(self._obj.to_arrow())
+class AwkwardOperations(Accessor):
+    series_type = pl.Series
+    dataframe_type = pl.DataFrame
 
     @property
     def str(self):
+        """String operations"""
         from awkward_pandas.strings import StringAccessor
 
         return StringAccessor(self)
@@ -71,27 +41,44 @@ class AwkwardOperations(ArithmeticMixin):
 
                 ak_arr = func(self.array, *others, **kwargs)
                 if isinstance(ak_arr, ak.Array):
-                    return ak_to_polars(ak_arr)
+                    return self.to_output(ak_arr)
                 return ak_arr
 
         else:
             raise AttributeError(item)
         return f
 
+    def to_output(self, arr: ak.Array) -> pl.DataFrame | pl.Series:
+        # Series Vs DataFrame?
+        return pl.from_arrow(ak.to_arrow(arr, extensionarray=False))
+
+    @property
+    def array(self) -> ak.Array:
+        return ak.from_arrow(self._obj.to_arrow())
+
     @classmethod
     def _create_op(cls, op):
         def run(self, *args, **kwargs):
-            return ak_to_polars(op(self.array, *args, **kwargs))
+            return self.to_output(op(self.array, *args, **kwargs))
 
         return run
 
-    _create_arithmetic_method = _create_op
-    _create_comparison_method = _create_op
-    _create_logical_method = _create_op
+    def merge(self):
+        # TODO: this is almost totally generic
+        if not self.is_dataframe(self._obj):
+            raise ValueError("Can only merge on a dataframe")
+        out = {}
+        for k in self._obj.columns:
+            out[k] = ak.from_arrow(self._obj[k].to_arrow())
+        arr = ak.Array(out)
+        return self.to_output(arr)
+
+    def unmerge(self):
+        arr = self.array
+        if not arr.fields:
+            raise ValueError
+        out = {k: self.to_output(arr[k]) for k in arr.fields}
+        return self.dataframe_type(out)
 
 
 AwkwardOperations._add_all()
-
-
-def ak_to_polars(arr: ak.Array) -> Union[pl.DataFrame, pl.Series]:
-    return pl.from_arrow(ak.to_arrow(arr, extensionarray=False))
