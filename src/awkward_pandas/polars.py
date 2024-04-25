@@ -10,8 +10,8 @@ from awkward_pandas.mixin import ArithmeticMixin
 @pl.api.register_series_namespace("ak")
 @pl.api.register_dataframe_namespace("ak")
 class AwkwardOperations(ArithmeticMixin):
-    def __init__(self, df: pl.DataFrame):
-        self._df = df
+    def __init__(self, df: pl.DataFrame | pl.Series):
+        self._obj = df
 
     def __array_function__(self, *args, **kwargs):
         return self.array.__array_function__(*args, **kwargs)
@@ -41,7 +41,13 @@ class AwkwardOperations(ArithmeticMixin):
 
     @property
     def array(self):
-        return ak.from_arrow(self._df.to_arrow())
+        return ak.from_arrow(self._obj.to_arrow())
+
+    @property
+    def str(self):
+        from awkward_pandas.strings import StringAccessor
+
+        return StringAccessor(self)
 
     def __getattr__(self, item):
         if item not in dir(self):
