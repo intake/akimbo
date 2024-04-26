@@ -1,3 +1,4 @@
+import functools
 import operator
 from typing import Callable, Iterable
 
@@ -167,22 +168,56 @@ class Accessor(ArithmeticMixin):
             return args[0](self.array, *args[3:], **kwargs)
         raise NotImplementedError
 
-    def __getattr__(self, item):
-        raise NotImplementedError
-
     @property
     def array(self) -> ak.Array:
         """Data as an awkward array"""
         raise NotImplementedError
 
     def merge(self, *args):
-        """Create single complex series from a dataframe"""
+        """Create single record-type nested series from a dataframe"""
         raise NotImplementedError
 
     def unmerge(self):
-        """Create dict of series from a series with record type"""
-        raise NotImplementedError
+        arr = self.array
+        if not arr.fields:
+            raise ValueError
+        out = {k: self.to_output(arr[k]) for k in arr.fields}
+        return self.dataframe_type(out)
 
     @classmethod
-    def _create_op(cls, op) -> Callable:
-        raise NotImplementedError
+    def _create_op(cls, op):
+        def run(self, *args, **kwargs):
+            return self.to_output(op(self.array, *args, **kwargs))
+
+        return run
+
+    def __getattr__(self, item):
+        if item not in dir(self):
+            raise AttributeError
+        func = getattr(ak, item, None)
+
+        if func:
+
+            @functools.wraps(func)
+            def f(*others, **kwargs):
+                others = [
+                    other.ak.array
+                    if isinstance(other, (self.series_type, self.dataframe_type))
+                    else other
+                    for other in others
+                ]
+                kwargs = {
+                    k: v.ak.array
+                    if isinstance(v, (self.series_type, self.dataframe_type))
+                    else v
+                    for k, v in kwargs.items()
+                }
+
+                ak_arr = func(self.array, *others, **kwargs)
+                if isinstance(ak_arr, ak.Array):
+                    return self.to_output(ak_arr)
+                return ak_arr
+
+        else:
+            raise AttributeError(item)
+        return f
