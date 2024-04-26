@@ -6,7 +6,7 @@ import awkward as ak
 
 methods = [
     _ for _ in (dir(ak)) if not _.startswith(("_", "ak_")) and not _[0].isupper()
-] + ["apply", "array", "explode"]
+] + ["apply", "array", "explode", "dt", "str"]
 
 df_methods = sorted(methods + ["merge"])
 series_methods = sorted(methods + ["unmerge"])
@@ -129,11 +129,14 @@ class ArithmeticMixin:
 
 
 class Accessor(ArithmeticMixin):
-    def __init__(self, obj):
-        self._obj = obj
+    """Bring the awkward API to dataframes and series"""
 
+    aggregations = True  # False means data is partitioned
     series_type = ()
     dataframe_type = ()
+
+    def __init__(self, obj):
+        self._obj = obj
 
     @classmethod
     def is_series(cls, data):
@@ -143,8 +146,10 @@ class Accessor(ArithmeticMixin):
     def is_dataframe(cls, data):
         return isinstance(data, cls.dataframe_type)
 
-    @classmethod
-    def to_output(cls, data):
+    def to_output(self, data):
+        # this is not a classmethod, so that pandas and cudf can apply index
+        # to output
+        # rename from_awkward?
         raise NotImplementedError
 
     def apply(self, fn: Callable):
@@ -167,9 +172,25 @@ class Accessor(ArithmeticMixin):
         raise NotImplementedError
 
     @property
+    def arrow(self):
+        raise NotImplementedError
+
+    @property
     def array(self) -> ak.Array:
         """Data as an awkward array"""
-        raise NotImplementedError
+        return ak.from_arrow(self.arrow)
+
+    @property
+    def str(self):
+        from awkward_pandas.strings import StringAccessor
+
+        return StringAccessor(self)
+
+    @property
+    def dt(self):
+        from awkward_pandas.datetimes import DatetimeAccessor
+
+        return DatetimeAccessor(self)
 
     def merge(self):
         if not self.is_dataframe(self._obj):
@@ -224,3 +245,7 @@ class Accessor(ArithmeticMixin):
         else:
             raise AttributeError(item)
         return f
+
+    def __init_subclass__(cls, **kwargs):
+        # auto add methods to all derivative classes
+        cls._add_all()

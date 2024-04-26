@@ -4,9 +4,6 @@ import functools
 from collections.abc import Callable
 
 import awkward as ak
-import pandas as pd
-
-from awkward_pandas.array import AwkwardExtensionArray
 
 
 def _encode(layout):
@@ -60,19 +57,24 @@ _SA_METHODMAPPING = {
     "isupper": "is_upper",
     "startswith": "starts_with",
 }
+methods = [
+    aname
+    for aname in (dir(ak.str))
+    if not aname.startswith(("_", "akstr_")) and not aname[0].isupper()
+]
 
 
 class StringAccessor:
     def __init__(self, accessor):
         self.accessor = accessor
 
-    def encode(self, encoding: str = "utf-8") -> pd.Series:
-        """Encode Series of strings to Series of bytes."""
-        return pd.Series(AwkwardExtensionArray(encode(self.accessor.array)))
+    def encode(self, encoding: str = "utf-8"):
+        """Encode Series of strings to Series of bytes. Leaves non-strings alone."""
+        return self.accessor.to_output(encode(self.accessor.array, encoding=encoding))
 
-    def decode(self, encoding: str = "utf-8") -> pd.Series:
-        """Decode Series of bytes to Series of strings."""
-        return pd.Series(AwkwardExtensionArray(decode(self.accessor.array)))
+    def decode(self, encoding: str = "utf-8"):
+        """Decode Series of bytes to Series of strings. Leaves non-bytestrings alone."""
+        return self.accessor.to_output(decode(self.accessor.array, encoding=encoding))
 
     @staticmethod
     def method_name(attr: str) -> str:
@@ -85,16 +87,12 @@ class StringAccessor:
         @functools.wraps(fn)
         def f(*args, **kwargs):
             arr = fn(self.accessor.array, *args, **kwargs)
-            idx = self.accessor._obj.index
+            # idx = self.accessor._obj.index
             if isinstance(arr, ak.Array):
-                return pd.Series(AwkwardExtensionArray(arr), index=idx)
+                return self.accessor.to_output(arr)
             return arr
 
         return f
 
     def __dir__(self) -> list[str]:
-        return [
-            aname
-            for aname in (dir(ak.str))
-            if not aname.startswith(("_", "akstr_")) and not aname[0].isupper()
-        ]
+        return sorted(methods)

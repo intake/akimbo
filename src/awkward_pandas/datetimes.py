@@ -1,22 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
-
 import awkward as ak
-import pandas as pd
 import pyarrow as pa
 import pyarrow.compute as pc
 
-from awkward_pandas.array import AwkwardExtensionArray
-
-if TYPE_CHECKING:
-    from awkward_pandas.accessor import AwkwardAccessor
-
 
 class DatetimeAccessor:
-    def __init__(self, ak_accessor: AwkwardAccessor) -> None:
-        self.ak_accessor = ak_accessor
-        self.index = ak_accessor._obj.index
+    def __init__(self, accessor) -> None:
+        self.accessor = accessor
 
     def cast(self, target_type=None, safe=None, options=None):
         raise NotImplementedError("TODO")
@@ -196,18 +187,17 @@ class DatetimeAccessor:
         raise NotImplementedError("TODO")
 
     def nanoseconds_between(self, end):
-        arr, args, kwargs = _arrowize(self, end)
-        return _as_series(
-            pc.nanoseconds_between(arr, *args, **kwargs),
-            index=self.index,
+        return self.accessor.to_output(
+            pc.nanoseconds_between(self.accessor.arrow, end.ak.arrow),
         )
 
     def quarters_between(self, end):
         raise NotImplementedError("TODO")
 
     def seconds_between(self, end):
-        arr, args, kwargs = _arrowize(self, end)
-        return _as_series(pc.seconds_between(arr, *args, **kwargs))
+        return self.accessor.to_output(
+            pc.seconds_between(self.accessor.arrow, end.ak.arrow)
+        )
 
     def weeks_between(
         self,
@@ -221,8 +211,9 @@ class DatetimeAccessor:
         raise NotImplementedError("TODO")
 
     def years_between(self, end):
-        arr, args, kwargs = _arrowize(self, end)
-        return _as_series(pc.years_between(arr, *args, **kwargs))
+        return self.accessor.to_output(
+            pc.years_between(self.accessor.arrow, end.ak.arrow)
+        )
 
 
 def _to_arrow(array):
@@ -233,76 +224,3 @@ def _to_arrow(array):
 def _make_unit_compatible(array):
     # TODO, actually convert units if not compatible
     return array
-
-
-def _arrowize(
-    dta: DatetimeAccessor,
-    *args: Any,
-    **kwargs: Any,
-) -> tuple[Any, tuple[Any, ...], dict[str, Any]]:
-    """Convert objects to arrow arrays.
-
-    Parameters
-    ----------
-    dta : DatetimeAccessor
-        The DatetimeAccessor with information about the main Series
-        object that is of dtype :obj:`~awkward_pandas.AwkwardDtype`.
-    *args : Any
-        Arguments that should be converted to arrow if necessary. Any
-        arguments that are Series backed by the
-        :obj:`~awkward_pandas.AwkwardDtype` will have the underlying
-        awkward array converted to an arrow array.
-    **kwargs : Any
-        Keyword arguments that should be converted to arrow if
-        necessary. Any values that are Series backed by the
-        :obj:`~awkward_pandas.AwkwardDtype` will have the underlying
-        awkward array converted to an arrow array.
-
-    Returns
-    -------
-    Array
-        Primary awkward Series converted to arrow.
-    tuple
-        New arguments with necessary conversions.
-    dict
-        New keyword arguments with necessary conversions.
-
-    """
-    primary_as_arrow = _to_arrow(dta.ak_accessor.array)
-
-    # parse args so that other series backed by awkward are
-    # converted to arrow array objects.
-    new_args = []
-    for arg in args:
-        if isinstance(arg, pd.Series) and arg.dtype == "awkward":
-            new_args.append(_to_arrow(arg.ak.array))
-        else:
-            new_args.append(arg)
-
-    # parse kwargs so that other series backed by awkward are
-    # converted to arrow array objects.
-    new_kwargs = {}
-    for k, v in kwargs.items():
-        if isinstance(v, pd.Series) and v.dtype == "awkward":
-            new_kwargs[k] = _to_arrow(v.ak.array)
-        else:
-            new_kwargs[k] = v
-
-    return primary_as_arrow, tuple(new_args), new_kwargs
-
-
-def _as_series(pyarrow_result, index):
-    """Convert pyarrow Array back in to awkward Series.
-
-    Parameters
-    ----------
-    pyarrow_result : pyarrow Array
-        PyArray array that was the result of a pyarrow.compute call.
-
-    Examples
-    --------
-    pd.Series
-        Series of type :obj:`~awkward_pandas.AwkwardDtype`.
-
-    """
-    return pd.Series(AwkwardExtensionArray(ak.from_arrow(pyarrow_result)), index=index)
