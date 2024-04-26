@@ -1,4 +1,5 @@
 .dir-locals.el
+.idea
 
 # setuptools_scm
 src/awkward_pandas/version.py
