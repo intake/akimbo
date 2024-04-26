@@ -132,21 +132,19 @@ class Accessor(ArithmeticMixin):
     def __init__(self, obj):
         self._obj = obj
 
-    @property
-    def series_type(self):
-        raise NotImplementedError
+    series_type = ()
+    dataframe_type = ()
 
-    @property
-    def dataframe_type(self):
-        raise NotImplementedError
+    @classmethod
+    def is_series(cls, data):
+        return isinstance(data, cls.series_type)
 
-    def is_series(self, data):
-        return isinstance(data, self.series_type)
+    @classmethod
+    def is_dataframe(cls, data):
+        return isinstance(data, cls.dataframe_type)
 
-    def is_dataframe(self, data):
-        return isinstance(data, self.dataframe_type)
-
-    def to_output(self, data):
+    @classmethod
+    def to_output(cls, data):
         raise NotImplementedError
 
     def apply(self, fn: Callable):
@@ -173,14 +171,19 @@ class Accessor(ArithmeticMixin):
         """Data as an awkward array"""
         raise NotImplementedError
 
-    def merge(self, *args):
-        """Create single record-type nested series from a dataframe"""
-        raise NotImplementedError
+    def merge(self):
+        if not self.is_dataframe(self._obj):
+            raise ValueError("Can only merge on a dataframe")
+        out = {}
+        for k in self._obj.columns:
+            out[k] = self._obj[k].ak.array
+        arr = ak.Array(out)
+        return self.to_output(arr)
 
     def unmerge(self):
         arr = self.array
         if not arr.fields:
-            raise ValueError
+            raise ValueError("Not array-of-records")
         out = {k: self.to_output(arr[k]) for k in arr.fields}
         return self.dataframe_type(out)
 
