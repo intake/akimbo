@@ -10,7 +10,25 @@ class DatetimeAccessor:
         self.accessor = accessor
 
     def cast(self, target_type=None, safe=None, options=None):
-        raise NotImplementedError("TODO")
+        """Cast values to given type
+
+        This may be the easiest way to make time types from scratch
+
+        Examples
+        --------
+
+        >>> import pandas as pd
+        >>> import awkward_pandas.pandas
+        >>> s = pd.Series([0, 1, 2])
+        >>> s.ak.dt.cast("timestamp[s]")
+        0    1970-01-01 00:00:00
+        1    1970-01-01 00:00:01
+        2    1970-01-01 00:00:02
+        dtype: timestamp[s][pyarrow]
+        """
+        return self.accessor.to_output(
+            pc.cast(self.accessor.arrow, target_type, safe, options)
+        )
 
     def ceil_temporal(
         self,

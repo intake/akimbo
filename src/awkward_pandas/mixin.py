@@ -174,10 +174,12 @@ class Accessor(ArithmeticMixin):
 
     @property
     def arrow(self) -> ak.Array:
+        """Data as an arrow array"""
         return self.to_arrow(self._obj)
 
     @classmethod
     def to_arrow(cls, data):
+        """Data as an arrow array"""
         raise NotImplementedError
 
     @property
@@ -187,34 +189,42 @@ class Accessor(ArithmeticMixin):
 
     @property
     def str(self):
+        """Nested string operations"""
         from awkward_pandas.strings import StringAccessor
 
         return StringAccessor(self)
 
     @property
     def dt(self):
+        """Nested datetime operations"""
         from awkward_pandas.datetimes import DatetimeAccessor
 
         return DatetimeAccessor(self)
 
     def merge(self):
+        """Make a single complex series out of the columns of a dataframe"""
         if not self.is_dataframe(self._obj):
             raise ValueError("Can only merge on a dataframe")
         out = {}
         for k in self._obj.columns:
+            # TODO: partial merge when column names are like "record.field"
             out[k] = self._obj[k].ak.array
         arr = ak.Array(out)
         return self.to_output(arr)
 
     def unmerge(self):
+        """Make dataframe out of a series of record type"""
         arr = self.array
         if not arr.fields:
             raise ValueError("Not array-of-records")
+        # TODO: partial unmerge when (some) fields are records
         out = {k: self.to_output(arr[k]) for k in arr.fields}
         return self.dataframe_type(out)
 
     @classmethod
     def _create_op(cls, op):
+        """Make functions to perform all the arithmetic, logical and comparison ops"""
+
         def run(self, *args, **kwargs):
             ar2 = (ar.ak.array if hasattr(ar, "ak") else ar for ar in args)
             ar3 = (ar.array if isinstance(ar, cls) else ar for ar in ar2)
