@@ -5,6 +5,21 @@ import pyarrow as pa
 import pyarrow.compute as pc
 
 
+def _run_unary(layout, op, kind=None, **kw):
+    if layout.is_record:
+        [_run_unary(_, op, kind=kind, **kw) for _ in layout._contents]
+    elif layout.is_leaf and (kind is None or layout.dtype.kind == kind):
+        layout._data = ak.str._apply_through_arrow(op, layout, **kw).data
+    elif layout.is_option or layout.is_list:
+        _run_unary(layout.content, op, kind=kind, **kw)
+
+
+def run_unary(arr: ak.Array, op, kind=None, **kw) -> ak.Array:
+    arr2 = ak.copy(arr)
+    _run_unary(arr2.layout, op, kind=kind, **kw)
+    return ak.Array(arr2)
+
+
 class DatetimeAccessor:
     def __init__(self, accessor) -> None:
         self.accessor = accessor
@@ -19,15 +34,21 @@ class DatetimeAccessor:
 
         >>> import pandas as pd
         >>> import awkward_pandas.pandas
-        >>> s = pd.Series([0, 1, 2])
+        >>> s = pd.Series([[0, 1], [1, 0], [2]])
         >>> s.ak.dt.cast("timestamp[s]")
-        0    1970-01-01 00:00:00
-        1    1970-01-01 00:00:01
-        2    1970-01-01 00:00:02
-        dtype: timestamp[s][pyarrow]
+        0    ['1970-01-01T00:00:00' '1970-01-01T00:00:01']
+        1    ['1970-01-01T00:00:01' '1970-01-01T00:00:00']
+        2                          ['1970-01-01T00:00:02']
+        dtype: list<item: timestamp[s]>[pyarrow]
         """
         return self.accessor.to_output(
-            pc.cast(self.accessor.arrow, target_type, safe, options)
+            run_unary(
+                self.accessor.array,
+                pc.cast,
+                target_type=target_type,
+                safe=safe,
+                options=options,
+            )
         )
 
     def ceil_temporal(

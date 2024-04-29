@@ -73,7 +73,10 @@ class StringAccessor:
         return self.accessor.to_output(encode(self.accessor.array, encoding=encoding))
 
     def decode(self, encoding: str = "utf-8"):
-        """Decode Series of bytes to Series of strings. Leaves non-bytestrings alone."""
+        """Decode Series of bytes to Series of strings. Leaves non-bytestrings alone.
+
+        Validity of UTF8 is *not* checked.
+        """
         return self.accessor.to_output(decode(self.accessor.array, encoding=encoding))
 
     @staticmethod
