@@ -146,11 +146,12 @@ class Accessor(ArithmeticMixin):
     def is_dataframe(cls, data):
         return isinstance(data, cls.dataframe_type)
 
-    def to_output(self, data):
-        # this is not a classmethod, so that pandas and cudf can apply index
-        # to output
-        # rename from_awkward?
+    @classmethod
+    def _to_output(cls, data):
         raise NotImplementedError
+
+    def to_output(self, data):
+        return self._to_output(data)
 
     def apply(self, fn: Callable):
         """Perform arbitrary function on all the values of the series"""
@@ -172,7 +173,11 @@ class Accessor(ArithmeticMixin):
         raise NotImplementedError
 
     @property
-    def arrow(self):
+    def arrow(self) -> ak.Array:
+        return self.to_arrow(self._obj)
+
+    @classmethod
+    def to_arrow(cls, data):
         raise NotImplementedError
 
     @property
@@ -211,7 +216,9 @@ class Accessor(ArithmeticMixin):
     @classmethod
     def _create_op(cls, op):
         def run(self, *args, **kwargs):
-            return self.to_output(op(self.array, *args, **kwargs))
+            ar2 = (ar.ak.array if hasattr(ar, "ak") else ar for ar in args)
+            ar3 = (ar.array if isinstance(ar, cls) else ar for ar in ar2)
+            return self.to_output(op(self.array, *ar3, **kwargs))
 
         return run
 

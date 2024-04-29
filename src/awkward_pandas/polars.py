@@ -10,10 +10,10 @@ class PolarsAwkwardAccessor(Accessor):
     series_type = pl.Series
     dataframe_type = pl.DataFrame
 
-    def to_output(self, arr: ak.Array) -> pl.DataFrame | pl.Series:
-        # Series Vs DataFrame?
+    @classmethod
+    def _to_output(cls, arr):
         return pl.from_arrow(ak.to_arrow(arr, extensionarray=False))
 
-    @property
-    def arrow(self) -> ak.Array:
-        return self._obj.to_arrow()
+    @classmethod
+    def to_arrow(cls, data):
+        return data.to_arrow()

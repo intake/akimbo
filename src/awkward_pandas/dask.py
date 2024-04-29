@@ -8,14 +8,31 @@ from dask.dataframe.extensions import (
 )
 
 from awkward_pandas.mixin import Accessor as AkAccessor
+from awkward_pandas.pandas import PandasAwkwardAccessor
 
 
 class DaskAwkwardAccessor(AkAccessor):
     series_type = dd.Series
     dataframe_type = dd.DataFrame
-    aggregations = (
-        False  # you need dask-awkward for that, which we could optionally do here
-    )
+    aggregations = False  # you need dask-awkward for that
+
+    @classmethod
+    def _create_op(cls, op):
+        def run(self, *args, **kwargs):
+            orig = self._obj.head()
+            ar = (ar.head() if hasattr(ar, "ak") else ar for ar in args)
+            meta = PandasAwkwardAccessor._to_output(op(orig.ak.array, *ar, **kwargs))
+
+            def inner(data):
+                import awkward_pandas.pandas  # noqa: F401
+
+                ar2 = (ar.ak.array if hasattr(ar, "ak") else ar for ar in args)
+                out = op(data.ak.array, *ar2, **kwargs)
+                return PandasAwkwardAccessor._to_output(out)
+
+            return self._obj.map_partitions(inner, meta=meta)
+
+        return run
 
     def __getattr__(self, item):
         if item not in dir(self):
@@ -28,6 +45,9 @@ class DaskAwkwardAccessor(AkAccessor):
             @functools.wraps(func)
             def f(*others, **kwargs):
                 def func2(data):
+                    import awkward_pandas.pandas  # noqa: F401
+
+                    # data and others are pandas objects here
                     return getattr(data.ak, item)(*others, **kwargs)
 
                 return self._obj.map_partitions(func2, meta=func(orig))
