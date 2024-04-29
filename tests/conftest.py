@@ -3,17 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 import pytest
-
-# from pandas.conftest import *
 from pandas.tests.extension.conftest import *  # noqa
-
-from awkward_pandas import AwkwardDtype
-
-
-@pytest.fixture
-def dtype():
-    """Fixture overriding function in pandas/tests/extension/conftest.py"""
-    return AwkwardDtype()
 
 
 @pytest.fixture
