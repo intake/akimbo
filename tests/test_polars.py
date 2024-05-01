@@ -1,9 +1,8 @@
 import numpy as np
 import pytest
 
-import awkward_pandas.polars  # noqa: F401
-
 pl = pytest.importorskip("polars")
+pytest.importorskip("awkward_pandas.polars")
 
 
 def test_simple():
