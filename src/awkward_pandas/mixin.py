@@ -153,9 +153,9 @@ class Accessor(ArithmeticMixin):
     def to_output(self, data):
         return self._to_output(data)
 
-    def apply(self, fn: Callable):
+    def apply(self, fn: Callable, *args, **kwargs):
         """Perform arbitrary function on all the values of the series"""
-        return self.to_output(fn(self.array))
+        return self.to_output(fn(self.array, *args, **kwargs))
 
     def __getitem__(self, item):
         out = self.array.__getitem__(item)

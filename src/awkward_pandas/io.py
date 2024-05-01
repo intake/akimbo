@@ -21,6 +21,7 @@ def read_parquet(
     extract: whether to turn top-level records into a dataframe. If False,
         will return a series.
     """
+    # TODO: dispatch to backends, don't assume pandas as default
     ds = ak.from_parquet(url, storage_options=storage_options, **kwargs)
     s = awkward_pandas.pandas.PandasAwkwardAccessor._to_output(ds)
     if extract:
