@@ -21,6 +21,19 @@ def run_unary(arr: ak.Array, op, kind=None, **kw) -> ak.Array:
     return ak.transform(func, arr)
 
 
+def _run_binary(layout1, layout2, op, kind=None, **kw):
+    if layout1.is_leaf and (kind is None or layout1.dtype.kind == kind):
+        return ak.str._apply_through_arrow(op, layout1, layout2, **kw)
+
+
+def run_binary(arr: ak.Array, other, op, kind=None, **kw) -> ak.Array:
+    def func(arrays, **kwargs):
+        x, y = arrays
+        return _run_binary(x, y, op, kind=kind, **kw)
+
+    return ak.transform(func, arr, other)
+
+
 def dec(func, mode="unary"):
     # TODO: require kind= on functions that need timestamps
 
@@ -34,6 +47,18 @@ def dec(func, mode="unary"):
 
             return self.accessor.to_output(
                 run_unary(self.accessor.array, func, **kwargs)
+            )
+
+    elif mode == "binary":
+
+        @functools.wraps(func)
+        def f(self, other, *args, **kwargs):
+            if args:
+                sig = list(inspect.signature(func).parameters)[2:]
+                kwargs.update({k: arg for k, arg in zip(sig, args)})
+
+            return self.accessor.to_output(
+                run_binary(self.accessor.array, other.ak.array, func, **kwargs)
             )
 
     else:
@@ -73,59 +98,21 @@ class DatetimeAccessor:
     year = dec(pc.year)
     year_month_day = dec(pc.year_month_day)
 
-    # the rest are binary
-    def day_time_interval_between(self, end):
-        raise NotImplementedError("TODO")
-
-    def days_between(self, end):
-        raise NotImplementedError("TODO")
-
-    def hours_between(self, end):
-        raise NotImplementedError("TODO")
-
-    def microseconds_between(self, end):
-        raise NotImplementedError("TODO")
-
-    def milliseconds_between(self, end):
-        raise NotImplementedError("TODO")
-
-    def minutes_between(self, end):
-        raise NotImplementedError("TODO")
-
-    def month_day_nano_interval_between(self, end):
-        raise NotImplementedError("TODO")
-
-    def month_interval_between(self, end):
-        raise NotImplementedError("TODO")
-
-    def nanoseconds_between(self, end):
-        return self.accessor.to_output(
-            pc.nanoseconds_between(self.accessor.arrow, end.ak.arrow),
-        )
-
-    def quarters_between(self, end):
-        raise NotImplementedError("TODO")
-
-    def seconds_between(self, end):
-        return self.accessor.to_output(
-            pc.seconds_between(self.accessor.arrow, end.ak.arrow)
-        )
-
-    def weeks_between(
-        self,
-        end,
-        /,
-        *,
-        count_from_zero=True,
-        week_start=1,
-        options=None,
-    ):
-        raise NotImplementedError("TODO")
-
-    def years_between(self, end):
-        return self.accessor.to_output(
-            pc.years_between(self.accessor.arrow, end.ak.arrow)
-        )
+    day_time_interval_between = dec(pc.day_time_interval_between, mode="binary")
+    days_between = dec(pc.days_between, mode="binary")
+    hours_between = dec(pc.hours_between, mode="binary")
+    microseconds_between = dec(pc.microseconds_between, mode="binary")
+    milliseconds_between = dec(pc.milliseconds_between, mode="binary")
+    minutes_between = dec(pc.minutes_between, mode="binary")
+    month_day_nano_interval_between = dec(
+        pc.month_day_nano_interval_between, mode="binary"
+    )
+    month_interval_between = dec(pc.month_interval_between, mode="binary")
+    nanoseconds_between = dec(pc.nanoseconds_between, mode="binary")
+    quarters_between = dec(pc.quarters_between, mode="binary")
+    seconds_between = dec(pc.seconds_between, mode="binary")
+    weeks_between = dec(pc.weeks_between, mode="binary")
+    years_between = dec(pc.years_between, mode="binary")
 
 
 def _to_arrow(array):
