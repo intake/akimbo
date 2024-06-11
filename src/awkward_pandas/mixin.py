@@ -150,7 +150,8 @@ class Accessor(ArithmeticMixin):
     def _to_output(cls, data):
         raise NotImplementedError
 
-    def to_output(self, data):
+    def to_output(self, data=None):
+        data = data if data is not None else self.array
         return self._to_output(data)
 
     def apply(self, fn: Callable):

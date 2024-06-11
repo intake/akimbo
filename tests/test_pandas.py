@@ -48,3 +48,11 @@ def test_ufunc():
 
     assert (s.ak + s.ak).tolist() == [[2, 4, 6], [8, 10], [12]]
     assert (s.ak + s).tolist() == [[2, 4, 6], [8, 10], [12]]
+
+
+def test_to_autoarrow():
+    a = [[1, 2, 3], [4, 5], [6]]
+    s = pd.Series(a)
+    s2 = s.ak.to_output()
+    assert s2.tolist() == a
+    assert "pyarrow" in str(s2.dtype)
