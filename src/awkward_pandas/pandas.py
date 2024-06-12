@@ -23,8 +23,9 @@ class PandasAwkwardAccessor(Accessor):
             pd.arrays.ArrowExtensionArray(ak.to_arrow(data, extensionarray=False))
         )
 
-    def to_output(self, data):
+    def to_output(self, data=None):
         # override to apply index
+        data = data if data is not None else self.array
         arr = pd.arrays.ArrowExtensionArray(ak.to_arrow(data, extensionarray=False))
         if self._obj is not None and len(arr) == len(self._obj.index):
             return pd.Series(arr, index=self._obj.index)

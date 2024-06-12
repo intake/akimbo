@@ -12,7 +12,13 @@ def read_parquet(
     extract: bool = True,
     **kwargs,
 ):
-    """Read a Parquet dataset with nested data into a Series or DataFrame.
+    """Read a Parquet dataset with nested data into a pandas Series or DataFrame.
+
+    This may cope with some deeply nested structures that pandas refuses
+    to read by itself.
+
+    You can pass a selection of columns to read (list of strings), and
+    other columns will not be parsed into memory.
 
     Parameters
     ----------
@@ -35,7 +41,10 @@ def read_json(
     extract=True,
     **kwargs,
 ):
-    """Read a JSON dataset with nested data into a Series or DataFrame.
+    """Read a JSON dataset with nested data into a pandas Series or DataFrame.
+
+    You can pass a selection of columns to read (list or jsonschema format), and
+    other columns will not be parsed into memory.
 
     Parameters
     ----------
