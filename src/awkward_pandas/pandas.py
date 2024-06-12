@@ -1,5 +1,6 @@
 import awkward as ak
 import pandas as pd
+import pyarrow
 import pyarrow as pa
 
 from awkward_pandas.mixin import Accessor
@@ -13,6 +14,12 @@ class PandasAwkwardAccessor(Accessor):
 
     @classmethod
     def to_arrow(cls, data):
+        if isinstance(data, ak.Array):
+            return ak.to_arrow(data)
+        if isinstance(data, ak.Record):
+            return ak.to_arrow_table(data)
+        if isinstance(data, (pyarrow.Array, pyarrow.Table)):
+            return data
         if cls.is_series(data):
             return pa.array(data)
         return pa.table(data)
