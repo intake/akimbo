@@ -36,9 +36,7 @@ def test_accessor():
 def test_distributed():
     distributed = pytest.importorskip("distributed")
 
-    with distributed.Client(
-        n_workers=1, threads_per_worker=1, preload=["awkward_pandas.dask"]
-    ):
+    with distributed.Client(n_workers=1, threads_per_worker=1):
         data = pd.arrays.ArrowExtensionArray(pa.array([[0], [0, 1]] * 2))
         s = pd.Series(data)
         df = pd.DataFrame({"s": s})
