@@ -44,7 +44,7 @@ class DaskAwkwardAccessor(AkAccessor):
                 # meta = PandasAwkwardAccessor._to_output(op(orig.ak.array, *ar, **kwargs))
                 meta = None
 
-            def inner(data):
+            def inner(data, _=DaskAwkwardAccessor):
                 import awkward_pandas.pandas  # noqa: F401
 
                 ar2 = (ar.ak.array if hasattr(ar, "ak") else ar for ar in args)
