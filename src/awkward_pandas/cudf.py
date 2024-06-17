@@ -1,12 +1,13 @@
-from cudf import DataFrame, Series
-import awkward as ak
+from typing import Callable
 
-from awkward_pandas.mixin import Accessor
+import awkward as ak
+from cudf import DataFrame, Series
+
 from awkward_pandas.ak_from_cudf import cudf_to_awkward as from_cudf
+from awkward_pandas.mixin import Accessor
 
 
 class CudfAwkwardAccessor(Accessor):
-
     series_type = Series
     dataframe_type = DataFrame
 
@@ -19,6 +20,24 @@ class CudfAwkwardAccessor(Accessor):
     @property
     def array(self) -> ak.Array:
         return from_cudf(self._obj)
+
+    @property
+    def str(self):
+        """Nested string operations"""
+        # need to find string ops within cudf
+        raise NotImplementedError
+
+    @property
+    def dt(self):
+        """Nested datetime operations"""
+        # need to find datetime ops within cudf
+        raise NotImplementedError
+
+    def apply(self, fn: Callable, *args, **kwargs):
+        if "CPUDispatcher" in str(fn):
+            # auto wrap original function for GPU
+            raise NotImplementedError
+        super().apply(fn, *args, **kwargs)
 
 
 @property  # type:ignore
