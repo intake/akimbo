@@ -16,14 +16,35 @@ class DaskAwkwardAccessor(AkAccessor):
     dataframe_type = dd.DataFrame
     aggregations = False  # you need dask-awkward for that
 
+    @staticmethod
+    def _to_tt(data):
+        # self._obj._meta.convert_dtypes(dtype_backend="pyarrow")
+        data = data._meta if hasattr(data, "_meta") else data
+        arr = PandasAwkwardAccessor.to_arrow(data)
+        return ak.to_backend(ak.from_arrow(arr), "typetracer")
+
     @classmethod
     def _create_op(cls, op):
         def run(self, *args, **kwargs):
-            orig = self._obj.head()
-            ar = (ar.head() if hasattr(ar, "ak") else ar for ar in args)
-            meta = PandasAwkwardAccessor._to_output(op(orig.ak.array, *ar, **kwargs))
+            try:
+                tt = self._to_tt(self._obj)
+                ar = (
+                    ak.to_backend(ar) if isinstance(ar, (ak.Array, ak.Record)) else ar
+                    for ar in args
+                )
+                ar = [self._to_tt(ar) if hasattr(ar, "ak") else ar for ar in ar]
+                out = op(tt, *ar, **kwargs)
+                meta = PandasAwkwardAccessor._to_output(
+                    ak.typetracer.length_zero_if_typetracer(out)
+                )
+            except (ValueError, TypeError):
+                # could make our own fallback as follows, but dask will guess anyway
+                # orig = self._obj.head()
+                # ar = (ar.head() if hasattr(ar, "ak") else ar for ar in args)
+                # meta = PandasAwkwardAccessor._to_output(op(orig.ak.array, *ar, **kwargs))
+                meta = None
 
-            def inner(data):
+            def inner(data, _=DaskAwkwardAccessor):
                 import awkward_pandas.pandas  # noqa: F401
 
                 ar2 = (ar.ak.array if hasattr(ar, "ak") else ar for ar in args)
