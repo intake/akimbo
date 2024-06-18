@@ -23,6 +23,22 @@ class DaskAwkwardAccessor(AkAccessor):
         arr = PandasAwkwardAccessor.to_arrow(data)
         return ak.to_backend(ak.from_arrow(arr), "typetracer")
 
+    def to_dask_awkward(self):
+        """Convert to dask-awkard.Array object
+
+        This make a s single complex awkward array type out of one or more columns.
+        You would do this, in order to use dask-awkward's more advanced inter-
+        parition aggregations and optimisation.
+
+        c.f., dask_awkward.to_dataframe
+        """
+        import dask_awkward as dak
+
+        tt = self._to_tt(self._obj)
+        return dak.lib.core.new_array_object(
+            self._obj.dask, divisions=self._obj.divisions, name=self._obj._name, meta=tt
+        )
+
     @classmethod
     def _create_op(cls, op):
         def run(self, *args, **kwargs):
