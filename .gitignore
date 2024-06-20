@@ -2,7 +2,7 @@
 .dir-locals.el
 
 # setuptools_scm
-src/awkward_pandas/version.py
+src/akimbo/version.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

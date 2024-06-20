@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-import awkward_pandas.pandas  # noqa
+import akimbo.pandas  # noqa
 
 pd = pytest.importorskip("pandas")
 

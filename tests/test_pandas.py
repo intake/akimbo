@@ -2,7 +2,7 @@ import awkward as ak
 import pandas as pd
 import pytest
 
-pytest.importorskip("awkward_pandas.pandas")
+pytest.importorskip("akimbo.pandas")
 
 
 def test_len():

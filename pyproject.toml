@@ -3,7 +3,7 @@ requires = ["hatchling>=1.8.0", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
-name = "awkward-pandas"
+name = "akimbo"
 description = "Awkward Array Pandas Extension"
 readme = "README.md"
 license = "BSD-3-Clause"
@@ -35,7 +35,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 complete = [
-  "awkward-pandas[strings,parquet,dask]",
+  "akimbo[strings,parquet,dask]",
 ]
 dask = [
   "dask[dataframe]",
@@ -47,7 +47,7 @@ strings = [
   "pyarrow >=7.0.0",
 ]
 test = [
-  "awkward-pandas[complete]",
+  "akimbo[complete]",
   "pytest >=6.0",
   "pytest-cov >=3.0.0",
   "distributed",
@@ -61,15 +61,15 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/intake/awkward-pandas"
-"Bug Tracker" = "https://github.com/intake/awkward-pandas/issues"
+Homepage = "https://github.com/intake/akimbo"
+"Bug Tracker" = "https://github.com/intake/akimbo/issues"
 
 [tool.hatch.version]
 source = "vcs"
-path = "src/awkward_pandas/__init__.py"
+path = "src/akimbo/__init__.py"
 
 [tool.hatch.build.hooks.vcs]
-version-file = "src/awkward_pandas/version.py"
+version-file = "src/akimbo/version.py"
 
 [tool.hatch.build.targets.sdist]
 include = ["/src"]
@@ -125,8 +125,8 @@ fail_under = 75
 show_missing = true
 
 [tool.coverage.run]
-omit = ["src/awkward_pandas/version.py"]
-source = ["src/awkward_pandas"]
+omit = ["src/akimbo/version.py"]
+source = ["src/akimbo"]
 
 [tool.ruff]
 ignore = ["E501"]

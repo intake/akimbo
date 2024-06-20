@@ -3,7 +3,7 @@ from __future__ import annotations
 import awkward as ak
 import fsspec
 
-import awkward_pandas.pandas
+import akimbo.pandas
 
 
 def read_parquet(
@@ -28,7 +28,7 @@ def read_parquet(
         will return a series.
     """
     ds = ak.from_parquet(url, storage_options=storage_options, **kwargs)
-    s = awkward_pandas.pandas.PandasAwkwardAccessor._to_output(ds)
+    s = akimbo.pandas.PandasAwkwardAccessor._to_output(ds)
     if extract:
         return s.ak.unmerge()
     return s
@@ -58,7 +58,7 @@ def read_json(
             line_delimited=True,
             **kwargs,
         )
-    s = awkward_pandas.pandas.PandasAwkwardAccessor._to_output(ds)
+    s = akimbo.pandas.PandasAwkwardAccessor._to_output(ds)
     if extract:
         return s.ak.unmerge()
     return s
