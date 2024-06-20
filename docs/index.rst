@@ -3,12 +3,12 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Awkward Pandas
-==============
+Akimbo
+======
 
-The akimbo project provides a Pandas `ExtensionArray`_ and
-`ExtensionDtype`_ that enable analysis of nested, non-tabular data in
-workflows that are already leveraging `Pandas`_ Series and DataFrames.
+The akimbo project provides a Dataframe accessor for various backend, that enable
+analysis of nested, non-tabular data in
+workflows
 
 .. toctree::
    :maxdepth: 1
@@ -22,7 +22,3 @@ workflows that are already leveraging `Pandas`_ Series and DataFrames.
    :caption: API Reference
 
    api.rst
-
-.. _Pandas: https://pandas.pydata.org/
-.. _ExtensionArray: https://pandas.pydata.org/docs/development/extending.html#extensionarray
-.. _ExtensionDtype: https://pandas.pydata.org/docs/development/extending.html#extensiondtype
