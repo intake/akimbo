@@ -191,14 +191,14 @@ class Accessor(ArithmeticMixin):
     @property
     def str(self):
         """Nested string operations"""
-        from awkward_pandas.strings import StringAccessor
+        from akimbo.strings import StringAccessor
 
         return StringAccessor(self)
 
     @property
     def dt(self):
         """Nested datetime operations"""
-        from awkward_pandas.datetimes import DatetimeAccessor
+        from akimbo.datetimes import DatetimeAccessor
 
         return DatetimeAccessor(self)
 

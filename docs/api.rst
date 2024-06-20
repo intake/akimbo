@@ -1,7 +1,7 @@
-awkward-pandas
+akimbo
 ==============
 
-.. currentmodule:: awkward_pandas
+.. currentmodule:: akimbo
 
 Top Level Functions
 ~~~~~~~~~~~~~~~~~~~
@@ -17,7 +17,7 @@ Top Level Functions
 Accessor
 ~~~~~~~~
 
-.. currentmodule:: awkward_pandas.accessor
+.. currentmodule:: akimbo.accessor
 
 .. autosummary::
    :toctree: generated/

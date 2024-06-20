@@ -3,7 +3,7 @@ import pandas as pd
 import pyarrow
 import pyarrow as pa
 
-from awkward_pandas.mixin import Accessor
+from akimbo.mixin import Accessor
 
 
 @pd.api.extensions.register_series_accessor("ak")

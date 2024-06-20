@@ -6,7 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "awkward-pandas"
+project = "akimbo"
 copyright = "2022, Awkward Developers"
 author = "Awkward Developers"
 
@@ -29,7 +29,7 @@ exclude_patterns = [
     "Thumbs.db",
     ".DS_Store",
     "**.ipynb_checkpoints",
-    "**awkward-pandas-demo.ipynb",
+    "**akimbo-demo.ipynb",
 ]
 
 

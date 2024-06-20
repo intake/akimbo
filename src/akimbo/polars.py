@@ -1,7 +1,7 @@
 import awkward as ak
 import polars as pl
 
-from awkward_pandas.mixin import Accessor
+from akimbo.mixin import Accessor
 
 
 @pl.api.register_series_namespace("ak")

@@ -7,8 +7,8 @@ from dask.dataframe.extensions import (
     register_series_accessor,
 )
 
-from awkward_pandas.mixin import Accessor as AkAccessor
-from awkward_pandas.pandas import PandasAwkwardAccessor
+from akimbo.mixin import Accessor as AkAccessor
+from akimbo.pandas import PandasAwkwardAccessor
 
 
 class DaskAwkwardAccessor(AkAccessor):
@@ -61,7 +61,7 @@ class DaskAwkwardAccessor(AkAccessor):
                 meta = None
 
             def inner(data, _=DaskAwkwardAccessor):
-                import awkward_pandas.pandas  # noqa: F401
+                import akimbo.pandas  # noqa: F401
 
                 ar2 = (ar.ak.array if hasattr(ar, "ak") else ar for ar in args)
                 out = op(data.ak.array, *ar2, **kwargs)
@@ -82,7 +82,7 @@ class DaskAwkwardAccessor(AkAccessor):
             @functools.wraps(func)
             def f(*others, **kwargs):
                 def func2(data):
-                    import awkward_pandas.pandas  # noqa: F401
+                    import akimbo.pandas  # noqa: F401
 
                     # data and others are pandas objects here
                     return getattr(data.ak, item)(*others, **kwargs)

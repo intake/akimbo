@@ -4,7 +4,7 @@ Installation
 Requirements
 ~~~~~~~~~~~~
 
-To install ``awkward-pandas`` you will need both ``awkward`` and
+To install ``akimbo`` you will need both ``awkward`` and
 ``pandas``. Whether you install from PyPI or conda-forge, these
 requirements will be enforced. The strict requirements are:
 
@@ -16,14 +16,14 @@ From PyPI
 
 .. code-block:: none
 
-   $ pip install awkward-pandas
+   $ pip install akimbo
 
 From conda-forge
 ~~~~~~~~~~~~~~~~
 
 .. code-block:: none
 
-   $ conda install awkward-pandas -c conda-forge
+   $ conda install akimbo -c conda-forge
 
 Optional dependencies
 ~~~~~~~~~~~~~~~~~~~~~
