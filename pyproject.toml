@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "akimbo"
-description = "Awkward Array Pandas Extension"
+description = "Awkward Array Extension for Dataframes"
 readme = "README.md"
 license = "BSD-3-Clause"
 requires-python = ">=3.9"
@@ -28,36 +28,20 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-    "awkward>=2.3.2",
-    "pandas>=1.2",
+    "awkward>=2.6.0"
 ]
 dynamic = ["version"]
 
 [project.optional-dependencies]
-complete = [
-  "akimbo[strings,parquet,dask]",
-]
-dask = [
-  "dask[dataframe]",
-]
-parquet = [
-  "pyarrow",
-]
-strings = [
-  "pyarrow >=7.0.0",
-]
-test = [
-  "akimbo[complete]",
-  "pytest >=6.0",
-  "pytest-cov >=3.0.0",
-  "distributed",
-  "polars"
-]
 docs = [
   "sphinx",
   "furo",
   "nbsphinx",
   "ipython",
+  "pandas", "polars", "dask", "pyarrow", "pandoc"
+]
+test = [
+  "pandas", "polars", "dask", "pyarrow", "pytest", "pytest-cov"
 ]
 
 [project.urls]
