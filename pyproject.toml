@@ -38,7 +38,7 @@ docs = [
   "furo",
   "nbsphinx",
   "ipython",
-  "pandas", "polars", "dask", "pyarrow", "pandoc"
+  "pandas", "polars", "dask", "pyarrow", "pandoc", "nbsphinx"
 ]
 test = [
   "pandas", "polars", "dask", "pyarrow", "pytest", "pytest-cov"
