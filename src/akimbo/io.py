@@ -18,7 +18,8 @@ def read_parquet(
     to read by itself.
 
     You can pass a selection of columns to read (list of strings), and
-    other columns will not be parsed into memory.
+    other columns will not be parsed into memory. Each of these labels
+    may be a root of deeper-nested structs, or use "*" globbing.
 
     Parameters
     ----------
@@ -42,8 +43,10 @@ def read_json(
 ):
     """Read a JSON dataset with nested data into a pandas Series or DataFrame.
 
-    You can pass a selection of columns to read (list or jsonschema format), and
-    other columns will not be parsed into memory.
+    You can pass a selection of columns to read (list or jsonschema format),
+    using ``schema=``, and
+    other columns will not be parsed into memory. See the docs for
+    ak.from_json for further details.
 
     Parameters
     ----------

@@ -9,6 +9,14 @@ from akimbo.mixin import Accessor
 @pd.api.extensions.register_series_accessor("ak")
 @pd.api.extensions.register_dataframe_accessor("ak")
 class PandasAwkwardAccessor(Accessor):
+    """Perhaps awkward operations on pandas data
+
+    Nested structures are handled using arrow as the
+    storage backend. If you use pandas object columns
+    (python lists, dicts, strings), they will be converted
+    on any access to a ``.ak`` method.
+    """
+
     series_type = pd.Series
     dataframe_type = pd.DataFrame
 

@@ -4,12 +4,10 @@ Installation
 Requirements
 ~~~~~~~~~~~~
 
-To install ``akimbo`` you will need both ``awkward`` and
-``pandas``. Whether you install from PyPI or conda-forge, these
-requirements will be enforced. The strict requirements are:
+To install ``akimbo`` you will need ``awkward`` and
+one of the backend libraries: ``pandas``, ``dask`` or ``polars``.
+In addition, for string and datetime functions, you will need ``pyarrow``.
 
-- ``awkward >=2.0.0``
-- ``pandas >=1.2``
 
 From PyPI
 ~~~~~~~~~
@@ -28,5 +26,5 @@ From conda-forge
 Optional dependencies
 ~~~~~~~~~~~~~~~~~~~~~
 
-- ``pyarrow``: for reading and writing data stored in parquet files.
-- ``s3fs``: for reading data from or writing data to Amazon S3.
+- ``pyarrow``: for reading and writing data stored in parquet files, and for
+  for the ``.str`` and ``.dt`` accessor attributes.
