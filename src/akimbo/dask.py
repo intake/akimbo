@@ -12,6 +12,21 @@ from akimbo.pandas import PandasAwkwardAccessor
 
 
 class DaskAwkwardAccessor(AkAccessor):
+    """Perform awkward operations on a dask series or frame
+
+    These operations are lazy, because of how dask works. Note
+    that we use mapping operations here, so any action on
+    axis==0 or 1 will produce results per partition, which
+    you must then combine.
+
+    To perform intra-partition operations, we recommend you
+    use the ``.to_dask_awkward`` method.
+
+    Correct arrow dtypes will be deduced when the input is
+    also arrow, which is now the default for the dask
+    "dataframe.dtype_backend" config options.
+    """
+
     series_type = dd.Series
     dataframe_type = dd.DataFrame
     aggregations = False  # you need dask-awkward for that
@@ -28,7 +43,8 @@ class DaskAwkwardAccessor(AkAccessor):
 
         This make a s single complex awkward array type out of one or more columns.
         You would do this, in order to use dask-awkward's more advanced inter-
-        parition aggregations and optimisation.
+        partition aggregations and optimisation.
+        See https://dask-awkward.readthedocs.io/
 
         c.f., dask_awkward.to_dataframe
         """
