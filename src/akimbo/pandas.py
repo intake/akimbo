@@ -45,7 +45,7 @@ class PandasAwkwardAccessor(Accessor):
         if self._obj is not None and len(arr) == len(self._obj.index):
             return pd.Series(arr, index=self._obj.index)
         else:
-            return arr
+            return pd.Series(arr)
 
     @staticmethod
     def _validate(_):

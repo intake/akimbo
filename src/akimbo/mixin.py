@@ -135,8 +135,9 @@ class Accessor(ArithmeticMixin):
     series_type = ()
     dataframe_type = ()
 
-    def __init__(self, obj):
+    def __init__(self, obj, behavior=None):
         self._obj = obj
+        self._behavior = behavior
 
     @classmethod
     def is_series(cls, data):
@@ -155,7 +156,11 @@ class Accessor(ArithmeticMixin):
         return self._to_output(data)
 
     def apply(self, fn: Callable):
-        """Perform arbitrary function on all the values of the series"""
+        """Perform arbitrary function on all the values of the series
+
+        The function should take an ak array as input and produce an
+        ak array or scalar.
+        """
         return self.to_output(fn(self.array))
 
     def __getitem__(self, item):
@@ -163,14 +168,22 @@ class Accessor(ArithmeticMixin):
         return self.to_output(out)
 
     def __dir__(self) -> Iterable[str]:
-        return series_methods if self.is_series(self._obj) else df_methods
+        attrs = (_ for _ in dir(self.array) if not _.startswith("_"))
+        meths = series_methods if self.is_series(self._obj) else df_methods
+        return sorted(set(attrs) | set(meths))
+
+    def with_behavior(self, behavior):
+        """Assign a behavior to this array-of-records"""
+        return type(self)(self._obj, behavior)
+
+    with_name = with_behavior  # alias - this is the upstream name
 
     def __array_function__(self, *args, **kwargs):
         return self.array.__array_function__(*args, **kwargs)
 
     def __array_ufunc__(self, *args, **kwargs):
         if args[1] == "__call__":
-            return args[0](self.array, *args[3:], **kwargs)
+            return self.to_output(args[0](self.array, *args[3:], **kwargs))
         raise NotImplementedError
 
     @property
@@ -186,7 +199,7 @@ class Accessor(ArithmeticMixin):
     @property
     def array(self) -> ak.Array:
         """Data as an awkward array"""
-        return ak.from_arrow(self.arrow)
+        return ak.with_name(ak.from_arrow(self.arrow), self._behavior)
 
     @property
     def str(self):
@@ -234,34 +247,36 @@ class Accessor(ArithmeticMixin):
         return run
 
     def __getattr__(self, item):
-        if item not in dir(self):
-            raise AttributeError
-        func = getattr(ak, item, None)
-
-        if func:
-
-            @functools.wraps(func)
-            def f(*others, **kwargs):
-                others = [
-                    other.ak.array
-                    if isinstance(other, (self.series_type, self.dataframe_type))
-                    else other
-                    for other in others
-                ]
-                kwargs = {
-                    k: v.ak.array
-                    if isinstance(v, (self.series_type, self.dataframe_type))
-                    else v
-                    for k, v in kwargs.items()
-                }
-
-                ak_arr = func(self.array, *others, **kwargs)
-                if isinstance(ak_arr, ak.Array):
-                    return self.to_output(ak_arr)
-                return ak_arr
-
+        arr = self.array
+        if hasattr(arr, item) and callable(getattr(arr, item)):
+            func = getattr(arr, item)
+            args = ()
+        elif hasattr(ak, item):
+            func = getattr(ak, item)
+            args = (arr,)
         else:
             raise AttributeError(item)
+
+        @functools.wraps(func)
+        def f(*others, **kwargs):
+            others = [
+                other.ak.array
+                if isinstance(other, (self.series_type, self.dataframe_type))
+                else other
+                for other in others
+            ]
+            kwargs = {
+                k: v.ak.array
+                if isinstance(v, (self.series_type, self.dataframe_type))
+                else v
+                for k, v in kwargs.items()
+            }
+
+            ak_arr = func(*args, *others, **kwargs)
+            if isinstance(ak_arr, ak.Array):
+                return self.to_output(ak_arr)
+            return ak_arr
+
         return f
 
     def __init_subclass__(cls, **kwargs):
