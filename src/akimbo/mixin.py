@@ -153,6 +153,8 @@ class Accessor(ArithmeticMixin):
 
     def to_output(self, data=None):
         data = data if data is not None else self.array
+        if not isinstance(data, Iterable):
+            return data
         return self._to_output(data)
 
     def apply(self, fn: Callable):
@@ -177,6 +179,8 @@ class Accessor(ArithmeticMixin):
         return type(self)(self._obj, behavior)
 
     with_name = with_behavior  # alias - this is the upstream name
+
+    asa = with_behavior  # favoured name
 
     def __array_function__(self, *args, **kwargs):
         return self.array.__array_function__(*args, **kwargs)

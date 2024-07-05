@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+
 import awkward as ak
 import pandas as pd
 import pyarrow
@@ -40,7 +42,9 @@ class PandasAwkwardAccessor(Accessor):
 
     def to_output(self, data=None):
         # override to apply index
-        data = data if data is not None else self.array
+        data: ak.Array = data if data is not None else self.array
+        if not isinstance(data, Iterable):
+            return data
         arr = pd.arrays.ArrowExtensionArray(ak.to_arrow(data, extensionarray=False))
         if self._obj is not None and len(arr) == len(self._obj.index):
             return pd.Series(arr, index=self._obj.index)
