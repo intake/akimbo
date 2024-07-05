@@ -1,4 +1,5 @@
 import functools
+from typing import Iterable
 
 import awkward as ak
 import dask.dataframe as dd
@@ -8,6 +9,7 @@ from dask.dataframe.extensions import (
 )
 
 from akimbo.mixin import Accessor as AkAccessor
+from akimbo.mixin import df_methods, series_methods
 from akimbo.pandas import PandasAwkwardAccessor
 
 
@@ -108,6 +110,11 @@ class DaskAwkwardAccessor(AkAccessor):
         else:
             raise AttributeError(item)
         return f
+
+    def __dir__(self) -> Iterable[str]:
+        attrs = (_ for _ in dir(self._obj._meta.ak.array) if not _.startswith("_"))
+        meths = series_methods if self.is_series(self._obj) else df_methods
+        return sorted(set(attrs) | set(meths))
 
 
 register_series_accessor("ak")(DaskAwkwardAccessor)

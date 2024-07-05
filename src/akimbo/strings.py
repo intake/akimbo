@@ -84,7 +84,7 @@ class StringAccessor:
         return _SA_METHODMAPPING.get(attr, attr)
 
     def __getattr__(self, attr: str) -> Callable:
-        attr = StringAccessor.method_name(attr)
+        attr = self.method_name(attr)
         fn = getattr(ak.str, attr)
 
         @functools.wraps(fn)
