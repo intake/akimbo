@@ -9,11 +9,9 @@ readme = "README.md"
 license = "BSD-3-Clause"
 requires-python = ">=3.9"
 authors = [
-    { name = "Doug Davis", email = "ddavis@ddavis.io" },
     { name = "Martin Durant", email = "mdurant@anaconda.com" },
 ]
 maintainers = [
-    { name = "Doug Davis", email = "ddavis@ddavis.io" },
     { name = "Martin Durant", email = "mdurant@anaconda.com" },
 ]
 classifiers = [
@@ -28,7 +26,8 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-    "awkward>=2.6.0"
+    "awkward>=2.6.5",
+    "pyarrow"
 ]
 dynamic = ["version"]
 
