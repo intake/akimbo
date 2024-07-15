@@ -134,6 +134,7 @@ class Accessor(ArithmeticMixin):
     aggregations = True  # False means data is partitioned
     series_type = ()
     dataframe_type = ()
+    subaccessors = {}
 
     def __init__(self, obj, behavior=None):
         self._obj = obj
@@ -205,19 +206,9 @@ class Accessor(ArithmeticMixin):
         """Data as an awkward array"""
         return ak.with_name(ak.from_arrow(self.arrow), self._behavior)
 
-    @property
-    def str(self):
-        """Nested string operations"""
-        from akimbo.strings import StringAccessor
-
-        return StringAccessor(self)
-
-    @property
-    def dt(self):
-        """Nested datetime operations"""
-        from akimbo.datetimes import DatetimeAccessor
-
-        return DatetimeAccessor(self)
+    @classmethod
+    def register_accessor(cls, name, klass):
+        cls.subaccessors[name] = klass
 
     def merge(self):
         """Make a single complex series out of the columns of a dataframe"""
@@ -255,6 +246,8 @@ class Accessor(ArithmeticMixin):
         if hasattr(arr, item) and callable(getattr(arr, item)):
             func = getattr(arr, item)
             args = ()
+        elif item in self.subaccessors:
+            return self.subaccessors[item](self)
         elif hasattr(ak, item):
             func = getattr(ak, item)
             args = (arr,)

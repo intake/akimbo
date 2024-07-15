@@ -6,6 +6,8 @@ import inspect
 import awkward as ak
 import pyarrow.compute as pc
 
+from akimbo.mixin import Accessor
+
 
 def _run_unary(layout, op, kind=None, **kw):
     if layout.is_leaf and (kind is None or layout.dtype.kind == kind):
@@ -34,7 +36,7 @@ def run_binary(arr: ak.Array, other, op, kind=None, **kw) -> ak.Array:
     return ak.transform(func, arr, other)
 
 
-def dec(func, mode="unary"):
+def dec(func, mode="unary", kind=None):
     # TODO: require kind= on functions that need timestamps
 
     if mode == "unary":
@@ -46,7 +48,7 @@ def dec(func, mode="unary"):
                 kwargs.update({k: arg for k, arg in zip(sig, args)})
 
             return self.accessor.to_output(
-                run_unary(self.accessor.array, func, **kwargs)
+                run_unary(self.accessor.array, func, kind=kind, **kwargs)
             )
 
     elif mode == "binary":
@@ -58,7 +60,9 @@ def dec(func, mode="unary"):
                 kwargs.update({k: arg for k, arg in zip(sig, args)})
 
             return self.accessor.to_output(
-                run_binary(self.accessor.array, other.ak.array, func, **kwargs)
+                run_binary(
+                    self.accessor.array, other.ak.array, func, kind=kind, **kwargs
+                )
             )
 
     else:
@@ -123,3 +127,6 @@ def _to_arrow(array):
 def _make_unit_compatible(array):
     # TODO, actually convert units if not compatible
     return array
+
+
+Accessor.register_accessor("dt", DatetimeAccessor)
