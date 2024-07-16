@@ -5,6 +5,8 @@ from collections.abc import Callable
 
 import awkward as ak
 
+from akimbo.mixin import Accessor
+
 
 def _encode(layout):
     if layout.is_record:
@@ -99,3 +101,6 @@ class StringAccessor:
 
     def __dir__(self) -> list[str]:
         return sorted(methods)
+
+
+Accessor.register_accessor("str", StringAccessor)
