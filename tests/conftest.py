@@ -5,6 +5,8 @@ import pandas as pd
 import pytest
 from pandas.tests.extension.conftest import *  # noqa
 
+import akimbo.pandas  # noqa
+
 
 @pytest.fixture
 def data(dtype):

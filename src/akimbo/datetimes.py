@@ -1,73 +1,17 @@
-from __future__ import annotations
-
 import functools
-import inspect
 
 import awkward as ak
 import pyarrow.compute as pc
 
+from akimbo.apply_tree import dec
 from akimbo.mixin import Accessor
 
 
-def _run_unary(layout, op, kind=None, **kw):
-    if layout.is_leaf and (kind is None or layout.dtype.kind == kind):
-        return ak.str._apply_through_arrow(op, layout, **kw)
-    if layout.is_list and layout.parameter("__array__") in ["bytestring", "string"]:
-        return ak.str._apply_through_arrow(op, layout, **kw)
+def match(*layouts):
+    return layouts[0].is_leaf and layouts[0].dtype.kind == "M"
 
 
-def run_unary(arr: ak.Array, op, kind=None, **kw) -> ak.Array:
-    def func(x, **kwargs):
-        return _run_unary(x, op, kind=kind, **kw)
-
-    return ak.transform(func, arr)
-
-
-def _run_binary(layout1, layout2, op, kind=None, **kw):
-    if layout1.is_leaf and (kind is None or layout1.dtype.kind == kind):
-        return ak.str._apply_through_arrow(op, layout1, layout2, **kw)
-
-
-def run_binary(arr: ak.Array, other, op, kind=None, **kw) -> ak.Array:
-    def func(arrays, **kwargs):
-        x, y = arrays
-        return _run_binary(x, y, op, kind=kind, **kw)
-
-    return ak.transform(func, arr, other)
-
-
-def dec(func, mode="unary", kind=None):
-    # TODO: require kind= on functions that need timestamps
-
-    if mode == "unary":
-        # TODO: modily __doc__?
-        @functools.wraps(func)
-        def f(self, *args, **kwargs):
-            if args:
-                sig = list(inspect.signature(func).parameters)[1:]
-                kwargs.update({k: arg for k, arg in zip(sig, args)})
-
-            return self.accessor.to_output(
-                run_unary(self.accessor.array, func, kind=kind, **kwargs)
-            )
-
-    elif mode == "binary":
-
-        @functools.wraps(func)
-        def f(self, other, *args, **kwargs):
-            if args:
-                sig = list(inspect.signature(func).parameters)[2:]
-                kwargs.update({k: arg for k, arg in zip(sig, args)})
-
-            return self.accessor.to_output(
-                run_binary(
-                    self.accessor.array, other.ak.array, func, kind=kind, **kwargs
-                )
-            )
-
-    else:
-        raise NotImplementedError
-    return f
+dec_t = functools.partial(dec, match=match)
 
 
 class DatetimeAccessor:
@@ -75,48 +19,46 @@ class DatetimeAccessor:
         self.accessor = accessor
 
     cast = dec(pc.cast)
-    ceil_temporal = dec(pc.ceil_temporal)
-    floor_temporal = dec(pc.floor_temporal)
-    reound_temporal = dec(pc.round_temporal)
-    strftime = dec(pc.strftime)
-    strptime = dec(pc.strptime)
-    day = dec(pc.day)
-    day_of_week = dec(pc.day_of_week)
-    day_of_year = dec(pc.day_of_year)
-    hour = dec(pc.hour)
-    iso_week = dec(pc.iso_week)
-    iso_year = dec(pc.iso_year)
-    iso_calendar = dec(pc.iso_calendar)
-    is_leap_year = dec(pc.is_leap_year)
-    microsecond = dec(pc.microsecond)
-    millisecond = dec(pc.millisecond)
-    minute = dec(pc.minute)
-    month = dec(pc.month)
-    nanosecond = dec(pc.nanosecond)
-    quarter = dec(pc.quarter)
-    second = dec(pc.second)
-    subsecond = dec(pc.subsecond)
-    us_week = dec(pc.us_week)
-    us_year = dec(pc.us_year)
-    week = dec(pc.week)
-    year = dec(pc.year)
-    year_month_day = dec(pc.year_month_day)
+    ceil_temporal = dec_t(pc.ceil_temporal)
+    floor_temporal = dec_t(pc.floor_temporal)
+    reound_temporal = dec_t(pc.round_temporal)
+    strftime = dec_t(pc.strftime)
+    strptime = dec_t(pc.strptime)
+    day = dec_t(pc.day)
+    day_of_week = dec_t(pc.day_of_week)
+    day_of_year = dec_t(pc.day_of_year)
+    hour = dec_t(pc.hour)
+    iso_week = dec_t(pc.iso_week)
+    iso_year = dec_t(pc.iso_year)
+    iso_calendar = dec_t(pc.iso_calendar)
+    is_leap_year = dec_t(pc.is_leap_year)
+    microsecond = dec_t(pc.microsecond)
+    millisecond = dec_t(pc.millisecond)
+    minute = dec_t(pc.minute)
+    month = dec_t(pc.month)
+    nanosecond = dec_t(pc.nanosecond)
+    quarter = dec_t(pc.quarter)
+    second = dec_t(pc.second)
+    subsecond = dec_t(pc.subsecond)
+    us_week = dec_t(pc.us_week)
+    us_year = dec_t(pc.us_year)
+    week = dec_t(pc.week)
+    year = dec_t(pc.year)
+    year_month_day = dec_t(pc.year_month_day)
 
-    day_time_interval_between = dec(pc.day_time_interval_between, mode="binary")
-    days_between = dec(pc.days_between, mode="binary")
-    hours_between = dec(pc.hours_between, mode="binary")
-    microseconds_between = dec(pc.microseconds_between, mode="binary")
-    milliseconds_between = dec(pc.milliseconds_between, mode="binary")
-    minutes_between = dec(pc.minutes_between, mode="binary")
-    month_day_nano_interval_between = dec(
-        pc.month_day_nano_interval_between, mode="binary"
-    )
-    month_interval_between = dec(pc.month_interval_between, mode="binary")
-    nanoseconds_between = dec(pc.nanoseconds_between, mode="binary")
-    quarters_between = dec(pc.quarters_between, mode="binary")
-    seconds_between = dec(pc.seconds_between, mode="binary")
-    weeks_between = dec(pc.weeks_between, mode="binary")
-    years_between = dec(pc.years_between, mode="binary")
+    day_time_interval_between = dec_t(pc.day_time_interval_between)
+    days_between = dec_t(pc.days_between)
+    hours_between = dec_t(pc.hours_between)
+    microseconds_between = dec_t(pc.microseconds_between)
+    milliseconds_between = dec_t(pc.milliseconds_between)
+    minutes_between = dec_t(pc.minutes_between)
+    month_day_nano_interval_between = dec_t(pc.month_day_nano_interval_between)
+    month_interval_between = dec_t(pc.month_interval_between)
+    nanoseconds_between = dec_t(pc.nanoseconds_between)
+    quarters_between = dec_t(pc.quarters_between)
+    seconds_between = dec_t(pc.seconds_between)
+    weeks_between = dec_t(pc.weeks_between)
+    years_between = dec_t(pc.years_between)
 
 
 def _to_arrow(array):

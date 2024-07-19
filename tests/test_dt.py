@@ -28,8 +28,8 @@ def test_unary_unit():
 def test_bad_type():
     # consider more specific exception rather than hitting arrow's one
     s = pd.Series([[0, 1], [1, 0], [2]])
-    with pytest.raises(NotImplementedError):
-        s.ak.dt.second()
+    out = s.ak.dt.second()
+    assert s.to_list() == out.to_list()
 
 
 def test_binary():
