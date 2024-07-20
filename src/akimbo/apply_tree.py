@@ -13,7 +13,7 @@ def leaf(*layout):
     return layout[0].is_leaf
 
 
-def run(
+def run_with_transform(
     arr: ak.Array, op, match=leaf, outtype=None, inmode="arrow", others=(), **kw
 ) -> ak.Array:
     def func(layout, **kwargs):
@@ -36,7 +36,9 @@ def dec(func, match=leaf, outtype=None, inmode="arrow"):
     """Make a nested/ragged version of an operation to apply throughout a tree"""
 
     @functools.wraps(func)
-    def f(self, *args, **kwargs):
+    def f(self, *args, where=None, **kwargs):
+        if not (where is None or isinstance(where, str)):
+            raise ValueError
         others = []
         if args:
             sig = list(inspect.signature(func).parameters)[1:]
@@ -51,10 +53,13 @@ def dec(func, match=leaf, outtype=None, inmode="arrow"):
                     others.append(ak.from_arrow(arg))
                 else:
                     kwargs.update({k: arg for k, arg in zip(sig, args)})
-
-        return self.accessor.to_output(
-            run(
-                self.accessor.array,
+        if where:
+            bits = tuple(where.split("."))
+            arr = self.accessor.array
+            part = arr.__getitem__(bits)
+            others = [o.__getitem__(bits) for o in others]
+            out = run_with_transform(
+                part,
                 func,
                 match=match,
                 outtype=outtype,
@@ -62,6 +67,34 @@ def dec(func, match=leaf, outtype=None, inmode="arrow"):
                 others=others,
                 **kwargs,
             )
-        )
+            final = ak.with_field(arr, out, where=where)
+            return self.accessor.to_output(final)
+        else:
+            return self.accessor.to_output(
+                run_with_transform(
+                    self.accessor.array,
+                    func,
+                    match=match,
+                    outtype=outtype,
+                    inmode=inmode,
+                    others=others,
+                    **kwargs,
+                )
+            )
+
+    f.__doc__ = """Run vectorized functions on nested/ragged/complex array
+
+    where: None or str
+        if None, will attempt to apply the kernel throughout the nested structure,
+        wherever correct types are encountered. If a str is given, only the selected
+        part of the structure will be considered, but the output will retain
+        the original shape.
+
+    Kernel documentation follows from the original function
+
+    ===
+    """ + (
+        f.__doc__ or str(f)
+    )
 
     return f
