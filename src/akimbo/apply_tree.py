@@ -1,5 +1,6 @@
 import functools
 import inspect
+from typing import Sequence
 
 import awkward as ak
 import pyarrow as pa
@@ -37,7 +38,12 @@ def dec(func, match=leaf, outtype=None, inmode="arrow"):
 
     @functools.wraps(func)
     def f(self, *args, where=None, **kwargs):
-        if not (where is None or isinstance(where, str)):
+        if not (
+            where is None
+            or isinstance(where, str)
+            or isinstance(where, Sequence)
+            and all(isinstance(_, str) for _ in where)
+        ):
             raise ValueError
         others = []
         if args:
@@ -84,11 +90,12 @@ def dec(func, match=leaf, outtype=None, inmode="arrow"):
 
     f.__doc__ = """Run vectorized functions on nested/ragged/complex array
 
-    where: None or str
+    where: None | str | Sequence[str, ...]
         if None, will attempt to apply the kernel throughout the nested structure,
-        wherever correct types are encountered. If a str is given, only the selected
+        wherever correct types are encountered. If where is given, only the selected
         part of the structure will be considered, but the output will retain
-        the original shape.
+        the original shape. A fieldname or sequence of fieldnames to descend into
+        the tree are acceptable
 
     Kernel documentation follows from the original function
 
