@@ -57,3 +57,15 @@ def test_binary_with_kwargs():
     assert out.tolist() == [[2, 2], [2, 2], [2]]
     out = ts1.ak.dt.weeks_between(ts2, count_from_zero=False, week_start=5)
     assert out.tolist() == [[3, 3], [3, 3], [3]]
+
+
+def test_mixed_record():
+    data = [{"a": [0, 1], "b": "ha"}, {"a": [1, 0], "b": "ha"}, {"a": [2], "b": "ha"}]
+    s = pd.Series(data)
+
+    # explicit select of where to apply transform
+    ts = s.ak.dt.cast("timestamp[s]", where="a")
+
+    # implicit selection of timestamps
+    s2 = ts.ak.dt.second()
+    assert s2.to_list() == data
