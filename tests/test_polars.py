@@ -28,6 +28,19 @@ def test_apply_where():
     assert s2[0] == {"a": [-1, -2, -3], "b": [1, 2, 3]}
 
 
+def test_merge_unmerge():
+    data = [
+        {"a": [1, 2, 3], "b": [1, 2, 3]},
+        {"a": [1, 2, 3], "b": [1, 2, 3]},
+        {"a": [1, 2, 3], "b": [1, 2, 3]},
+    ]
+    s = pl.Series(data)
+    df = s.ak.unmerge()
+    assert df["a"].to_list() == [[1, 2, 3]] * 3
+    s2 = df.ak.merge()
+    assert s.to_list() == s2.to_list()
+
+
 def test_operator():
     s = pl.Series([[1, 2, 3], [], [4, 5]])
     s2 = s.ak + 1
