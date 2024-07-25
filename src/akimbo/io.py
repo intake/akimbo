@@ -131,6 +131,9 @@ def _merge(ind1, ind2, builder):
         builder.end_list()
 
 
+_jitted = [None]
+
+
 def join(
     table1: ak.Array,
     table2: ak.Array,
@@ -152,7 +155,9 @@ def join(
         # indexed view is not cache friendly; real sort is better
         table1 = table1[ak.argsort(table1[key], axis=0)]
         table2 = table2[ak.argsort(table2[rkey], axis=0)]
-    merge = numba.njit(cache=True)(_merge)
+    if _jitted[0] is None:
+        _jitted[0] = numba.njit(cache=True)(_merge)
+    merge = _jitted[0]
     builder = ak.ArrayBuilder()
     merge(table1[key], table2[key], builder)
     merge_index = builder.snapshot()
