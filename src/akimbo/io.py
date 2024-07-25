@@ -131,7 +131,14 @@ def _merge(ind1, ind2, builder):
         builder.end_list()
 
 
-def join(table1, table2, key, colname, sort=False):
+def join(
+    table1: ak.Array,
+    table2: ak.Array,
+    key: str,
+    colname: str = "match",
+    sort: bool = False,
+    rkey: str = None,
+):
     """Make nested ORM-style left join on common key in two tables
 
     Assuming ``key`` is a field in each table, the output will look like
@@ -140,13 +147,16 @@ def join(table1, table2, key, colname, sort=False):
     """
     import numba
 
+    rkey = rkey or key
     if sort:
         # indexed view is not cache friendly; real sort is better
         table1 = table1[ak.argsort(table2[key], axis=0)]
-        table2 = table2[ak.argsort(table2[key], axis=0)]
+        table2 = table2[ak.argsort(table2[rkey], axis=0)]
     merge = numba.njit(cache=True)(_merge)
     builder = ak.ArrayBuilder()
     merge(table1[key], table2[key], builder)
     merge_index = builder.snapshot()
-    # TODO: apply indexing to add field to original table
-    return merge_index
+    indexed = table2[ak.flatten(merge_index)]
+    counts = ak.num(merge_index)
+    listy = ak.unflatten(indexed, counts)
+    return ak.with_field(table1, listy, colname)
