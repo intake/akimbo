@@ -18,7 +18,9 @@ class DatetimeAccessor:
     def __init__(self, accessor) -> None:
         self.accessor = accessor
 
-    cast = dec(pc.cast)
+    # listed below https://arrow.apache.org/docs/python/generated/
+    # pyarrow.compute.ceil_temporal.html
+    cast = dec(pc.cast)  # TODO: move to .ak
     ceil_temporal = dec_t(pc.ceil_temporal)
     floor_temporal = dec_t(pc.floor_temporal)
     reound_temporal = dec_t(pc.round_temporal)
@@ -59,6 +61,10 @@ class DatetimeAccessor:
     seconds_between = dec_t(pc.seconds_between)
     weeks_between = dec_t(pc.weeks_between)
     years_between = dec_t(pc.years_between)
+
+    # TODO: strftime, strptime
+
+    # TODO: timezone conversion
 
 
 def _to_arrow(array):

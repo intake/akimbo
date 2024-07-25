@@ -150,6 +150,7 @@ class Accessor(ArithmeticMixin):
 
     @classmethod
     def _to_output(cls, data):
+        # TODO: clarify protocol here; can data be in arrow already?
         raise NotImplementedError
 
     def to_output(self, data=None):
@@ -158,13 +159,21 @@ class Accessor(ArithmeticMixin):
             return data
         return self._to_output(data)
 
-    def apply(self, fn: Callable):
+    def apply(self, fn: Callable, where=None, **kwargs):
         """Perform arbitrary function on all the values of the series
 
         The function should take an ak array as input and produce an
         ak array or scalar.
         """
-        return self.to_output(fn(self.array))
+        if where:
+            bits = tuple(where.split("."))
+            arr = self.array
+            part = arr.__getitem__(bits)
+            out = fn(part, **kwargs)
+            final = ak.with_field(arr, out, where=where)
+        else:
+            final = fn(self.array)
+        return self.to_output(final)
 
     def __getitem__(self, item):
         out = self.array.__getitem__(item)
@@ -175,8 +184,18 @@ class Accessor(ArithmeticMixin):
         meths = series_methods if self.is_series(self._obj) else df_methods
         return sorted(set(attrs) | set(meths))
 
-    def with_behavior(self, behavior):
+    def with_behavior(self, behavior, where=()):
         """Assign a behavior to this array-of-records"""
+        # TODO: compare usage with sub-accessors
+        # TODO: implement where= (assign directly to ._paraneters["__record__"]
+        #  of output's layout. In this case, behaviour is a dict of locations to apply to.
+        #  and we can continually add to it (or accept a dict)
+        # beh = self._behavior.copy()
+        # if isinstance(behavior, dict):
+        #    beh.update(behavior)
+        # else:
+        #    # str or type
+        #    beh[where] = behaviour
         return type(self)(self._obj, behavior)
 
     with_name = with_behavior  # alias - this is the upstream name
@@ -208,6 +227,7 @@ class Accessor(ArithmeticMixin):
 
     @classmethod
     def register_accessor(cls, name, klass):
+        # TODO: check clobber?
         cls.subaccessors[name] = klass
 
     def merge(self):

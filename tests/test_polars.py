@@ -17,6 +17,17 @@ def test_apply():
     assert s2.to_list() == [[-1, -2, -3], [], [-4, -5]]
 
 
+def test_apply_where():
+    data = [
+        {"a": [1, 2, 3], "b": [1, 2, 3]},
+        {"a": [1, 2, 3], "b": [1, 2, 3]},
+        {"a": [1, 2, 3], "b": [1, 2, 3]},
+    ]
+    s = pl.Series(data)
+    s2 = s.ak.apply(np.negative, where="a")
+    assert s2[0] == {"a": [-1, -2, -3], "b": [1, 2, 3]}
+
+
 def test_operator():
     s = pl.Series([[1, 2, 3], [], [4, 5]])
     s2 = s.ak + 1
