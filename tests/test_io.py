@@ -1,10 +1,12 @@
 import numpy as np
 import pandas as pd
+import pytest
 
 import akimbo.pandas
 
 
 def test_join():
+    pytest.importorskip("numba")
     left = pd.DataFrame({"key": [1, 2, 3, 4, 5, 6, 7, 8], "value": ["a"] * 8})
     right = pd.DataFrame(
         {"key": np.random.randint(1, 9, size=30), "value": ["b"] * 30}
@@ -16,6 +18,7 @@ def test_join():
 
 
 def test_join_acc():
+    pytest.importorskip("numba")
     left = pd.DataFrame({"key": [1, 2, 3, 4, 5, 6, 7, 8], "value": ["a"] * 8})
     right = pd.DataFrame(
         {"key": np.random.randint(1, 9, size=30), "value": ["b"] * 30}
