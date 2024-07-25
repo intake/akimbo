@@ -90,16 +90,16 @@ def dec(func, match=leaf, outtype=None, inmode="arrow"):
 
     f.__doc__ = """Run vectorized functions on nested/ragged/complex array
 
-    where: None | str | Sequence[str, ...]
-        if None, will attempt to apply the kernel throughout the nested structure,
-        wherever correct types are encountered. If where is given, only the selected
-        part of the structure will be considered, but the output will retain
-        the original shape. A fieldname or sequence of fieldnames to descend into
-        the tree are acceptable
+where: None | str | Sequence[str, ...]
+    if None, will attempt to apply the kernel throughout the nested structure,
+    wherever correct types are encountered. If where is given, only the selected
+    part of the structure will be considered, but the output will retain
+    the original shape. A fieldname or sequence of fieldnames to descend into
+    the tree are acceptable
 
-    Kernel documentation follows from the original function
+-Kernel documentation follows from the original function-
 
-    ===
+===
     """ + (
         f.__doc__ or str(f)
     )
