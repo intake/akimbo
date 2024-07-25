@@ -150,7 +150,7 @@ def join(
     rkey = rkey or key
     if sort:
         # indexed view is not cache friendly; real sort is better
-        table1 = table1[ak.argsort(table2[key], axis=0)]
+        table1 = table1[ak.argsort(table1[key], axis=0)]
         table2 = table2[ak.argsort(table2[rkey], axis=0)]
     merge = numba.njit(cache=True)(_merge)
     builder = ak.ArrayBuilder()
