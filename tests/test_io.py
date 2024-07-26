@@ -46,7 +46,7 @@ def test_read_parquet(m):  # noqa (m is a fixture)
     df.to_parquet(fn)
 
     out = akimbo.read_parquet(fn)
-    meta = akimbo.metadata_from_parquet(fn)
+    meta = akimbo.get_parquet_schema(fn)
     assert meta["columns"] == ["a.list.element"]  # parquet column naming convention
     assert out.columns == ["a"]
     assert out.a.to_list() == data

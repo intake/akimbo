@@ -11,6 +11,10 @@ Top Level Functions
 
    read_parquet
    read_json
+   read_avro
+   get_parquet_schema
+   get_json_schema
+   get_avro_schema
 
 Accessor
 ~~~~~~~~

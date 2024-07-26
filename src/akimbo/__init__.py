@@ -1,16 +1,20 @@
 from __future__ import annotations
 
-from awkward import (  # re-export
-    behavior,
-    metadata_from_parquet,
-    mixin_class,
-    mixin_class_method,
-)
+from awkward import behavior
+from awkward import metadata_from_parquet as get_parquet_schema  # re-export
+from awkward import mixin_class, mixin_class_method
 
 import akimbo.datetimes as datetimes
 import akimbo.mixin as mixin
 import akimbo.strings as strings
-from akimbo.io import join, read_avro, read_json, read_parquet
+from akimbo.io import (
+    get_avro_schema,
+    get_json_schema,
+    join,
+    read_avro,
+    read_json,
+    read_parquet,
+)
 from akimbo.version import version as __version__  # noqa
 
 __all__ = (
@@ -23,6 +27,8 @@ __all__ = (
     "behavior",
     "mixin_class",
     "mixin_class_method",
-    "metadata_from_parquet",
+    "get_parquet_schema",
+    "get_json_schema",
+    "get_avro_schema",
     "strings",
 )
