@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools
 import operator
 from typing import Callable, Iterable
@@ -250,7 +252,35 @@ class Accessor(ArithmeticMixin):
         out = {k: self.to_output(arr[k]) for k in arr.fields}
         return self.dataframe_type(out)
 
-    def join(self, other, key: str, colname="match", sort=False, rkey=None):
+    def join(
+        self,
+        other,
+        key: str,
+        colname: str = "match",
+        sort: bool = False,
+        rkey: str | None = None,
+        numba: bool = True,
+    ):
+        """DB ORM-style left join to other dataframe/series with nesting but no copy
+
+        Related records of the ``other`` table will appear as a list under the new field
+        ``colname`` for all matching keys. This is the speed and memory efficient way
+        to doing a pandas-style merge/join, which explodes out the values to a much
+        bigger memory footprint.
+
+        Parameters
+        ----------
+        other: series or table
+        key: name of the field in this table to match on
+        colname: the field that will be added to each record. This field will exist even
+            if there are no matches, in which case the list will be empty.
+        sort: if False, assumes that they key is sorted in both tables. If True, an
+            argsort is performed first, and the match is done by indexing. This may be
+            significantly slower.
+        rkey: if the name of the field to match on in different in the ``other`` table.
+        numba: the matching algorithm will go much faster using numba. However, you can
+            set this to False if you do not have numba installed.
+        """
         from akimbo.io import join
 
         out = join(
