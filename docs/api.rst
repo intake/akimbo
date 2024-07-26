@@ -26,9 +26,17 @@ Accessor
 
    akimbo.mixin.Accessor
 
+.. autoclass:: akimbo.mixin.Accessor
+   :members:
+
 
 Backends
 ~~~~~~~~
+
+.. autosummary::
+    akimbo.pandas.PandasAwkwardAccessor
+    akimbo.dask.DaskAwkwardAccessor
+    akimbo.polars.PolarsAwkwardAccessor
 
 .. autoclass:: akimbo.pandas.PandasAwkwardAccessor
 
