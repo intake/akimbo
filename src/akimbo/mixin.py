@@ -250,6 +250,14 @@ class Accessor(ArithmeticMixin):
         out = {k: self.to_output(arr[k]) for k in arr.fields}
         return self.dataframe_type(out)
 
+    def join(self, other, key: str, colname="match", sort=False, rkey=None):
+        from akimbo.io import join
+
+        out = join(
+            self.array, other.ak.array, key, colname=colname, sort=sort, rkey=rkey
+        )
+        return self.to_output(out)
+
     @classmethod
     def _create_op(cls, op):
         """Make functions to perform all the arithmetic, logical and comparison ops"""

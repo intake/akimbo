@@ -40,7 +40,7 @@ docs = [
   "pandas", "polars", "dask", "pyarrow", "pandoc", "nbsphinx"
 ]
 test = [
-  "pandas", "polars", "dask", "pyarrow", "pytest", "pytest-cov"
+  "pandas", "polars", "dask", "pyarrow", "pytest", "pytest-cov", "numba", "dask-awkward"
 ]
 
 [project.urls]

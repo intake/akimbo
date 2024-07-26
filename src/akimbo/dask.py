@@ -72,10 +72,6 @@ class DaskAwkwardAccessor(AkAccessor):
                     ak.typetracer.length_zero_if_typetracer(out)
                 )
             except (ValueError, TypeError):
-                # could make our own fallback as follows, but dask will guess anyway
-                # orig = self._obj.head()
-                # ar = (ar.head() if hasattr(ar, "ak") else ar for ar in args)
-                # meta = PandasAwkwardAccessor._to_output(op(orig.ak.array, *ar, **kwargs))
                 meta = None
 
             def inner(data, _=DaskAwkwardAccessor):
