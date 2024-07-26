@@ -58,6 +58,7 @@ def read_parquet(
 def read_json(
     url: str,
     storage_options: dict | None = None,
+    schema: dict | None = None,
     extract: bool = True,
     backend: str = "pandas",
     **kwargs,
@@ -75,12 +76,19 @@ def read_json(
     ----------
     url: data location (may include glob characters)
     storage_options: any arguments for an fsspec backend
+    schema: if given, the JSONschema expected in the data; this allows for
+        selecting only some part of the record structure, this saving on
+        some parsing time and potentially a lot of memory footprint.
     extract: whether to turn top-level records into a dataframe. If False,
         will return a series.
     backend: one of "pandas", "polars" or "dask"
     """
+    # TODO: implement columns=["field1", "field2.sub", ...] style schema
+    #  using dak.lib.io.layout_to_jsonschema
     with fsspec.open_files(url, **(storage_options or {})) as f:
-        ds = ak.concatenate([ak.from_json(_, line_delimited=True, **kwargs) for _ in f])
+        ds = ak.concatenate(
+            [ak.from_json(_, line_delimited=True, schema=schema, **kwargs) for _ in f]
+        )
     return ak_to_series(ds, backend, extrcact=extract)
 
 
@@ -101,9 +109,27 @@ def read_avro(
         will return a series.
     backend: one of "pandas", "polars" or "dask"
     """
+    from awkward._connect.avro import ReadAvroFT
+    from awkward.operations.ak_from_avro_file import _impl
+
     with fsspec.open(url, **(storage_options or {})) as f:
-        ds = ak.from_avro_file(f, **kwargs)
+        # TODO: ak.from_avro_file broken with file-like
+        reader = ReadAvroFT(f, limit_entries=None, debug_forth=False)
+        ds = _impl(*reader.outcontents, highlevel=True, attrs=None, behavior=None)
     return ak_to_series(ds, backend, extract=extract)
+
+
+def get_avro_schema(
+    url: str,
+    storage_options: dict | None = None,
+):
+    """Fetch ak form of tthe schema defined in given avro file"""
+    from awkward._connect.avro import ReadAvroFT
+
+    with fsspec.open(url, "rb", **(storage_options or {})) as f:
+        reader = ReadAvroFT(f, limit_entries=1, debug_forth=False)
+        form, length, container = reader.outcontents
+    return form
 
 
 def _merge(ind1, ind2, builder):

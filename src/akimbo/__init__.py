@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from awkward import behavior, mixin_class, mixin_class_method  # re-export
+from awkward import (  # re-export
+    behavior,
+    metadata_from_parquet,
+    mixin_class,
+    mixin_class_method,
+)
 
 import akimbo.datetimes as datetimes
 import akimbo.mixin as mixin
@@ -18,5 +23,6 @@ __all__ = (
     "behavior",
     "mixin_class",
     "mixin_class_method",
+    "metadata_from_parquet",
     "strings",
 )
