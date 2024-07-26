@@ -107,7 +107,7 @@ def read_avro(
 
 
 def _merge(ind1, ind2, builder):
-    """numba jittable laft join/merge index finder"""
+    """numba jittable left join/merge index finder"""
     len2 = len(ind2)
     j = 0
     for i in ind1:
@@ -151,12 +151,14 @@ def join(
     import numba
 
     rkey = rkey or key
+    # assert key fields are 1D? allow optional?
     if sort:
-        # indexed view is not cache friendly; real sort is better
+        # indexed view is not cache friendly; real sort is better but copies
         table1 = table1[ak.argsort(table1[key], axis=0)]
         table2 = table2[ak.argsort(table2[rkey], axis=0)]
     if _jitted[0] is None:
-        _jitted[0] = numba.njit(cache=True)(_merge)
+        # per-session cache, cache=True doesn't work
+        _jitted[0] = numba.njit()(_merge)
     merge = _jitted[0]
     builder = ak.ArrayBuilder()
     merge(table1[key], table2[key], builder)
