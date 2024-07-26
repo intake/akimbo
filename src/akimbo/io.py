@@ -78,7 +78,8 @@ def read_json(
     storage_options: any arguments for an fsspec backend
     schema: if given, the JSONschema expected in the data; this allows for
         selecting only some part of the record structure, this saving on
-        some parsing time and potentially a lot of memory footprint.
+        some parsing time and potentially a lot of memory footprint. Even if reading
+        all the data, providing a schema will lead to better performance.
     extract: whether to turn top-level records into a dataframe. If False,
         will return a series.
     backend: one of "pandas", "polars" or "dask"
@@ -89,7 +90,33 @@ def read_json(
         ds = ak.concatenate(
             [ak.from_json(_, line_delimited=True, schema=schema, **kwargs) for _ in f]
         )
-    return ak_to_series(ds, backend, extrcact=extract)
+    return ak_to_series(ds, backend, extract=extract)
+
+
+def get_json_schema(
+    url: str, storage_options: dict | None = None, nbytes: int = 1_000_000, **kwargs
+):
+    """Get JSONSchema representation of the contents of a line-delimited JSON file
+
+    Currently requires dask_awkward to be installed, which in turn required dask
+
+    Parameters
+    ----------
+    url: file location
+    storage_options: passed to fsspec
+    nbytes: how much of the file to read in infer the types. Must be at least one line, and
+        should be representative of all the data.
+
+    Returns
+    -------
+    JSONschema dictionary
+    """
+    from dask_awkward.lib.io.json import layout_to_jsonschema
+
+    with fsspec.open(url, **(storage_options or {})) as f:
+        data = f.read(nbytes).rsplit(b"\n", 1)[0]
+    arr = ak.from_json(data, line_delimited=True, **kwargs)
+    return layout_to_jsonschema(arr.layout)
 
 
 def read_avro(
@@ -167,6 +194,7 @@ def join(
     colname: str = "match",
     sort: bool = False,
     rkey: str = None,
+    numba=True,
 ):
     """Make nested ORM-style left join on common key in two tables
 
@@ -174,18 +202,27 @@ def join(
     ``table1`` but with an extra column ``colname`` containing a list of
     records from matching rows in ``table2``.
     """
-    import numba
-
     rkey = rkey or key
     # assert key fields are 1D? allow optional?
     if sort:
         # indexed view is not cache friendly; real sort is better but copies
         table1 = table1[ak.argsort(table1[key], axis=0)]
         table2 = table2[ak.argsort(table2[rkey], axis=0)]
-    if _jitted[0] is None:
-        # per-session cache, cache=True doesn't work
-        _jitted[0] = numba.njit()(_merge)
-    merge = _jitted[0]
+    if numba:
+        if _jitted[0] is None:
+            try:
+                from numba import njit
+
+                # per-session cache, cache=True doesn't work
+                _jitted[0] = njit()(_merge)
+            except ImportError:
+                raise ImportError(
+                    "numba is required for fast joins, but you can choose to run with"
+                    " numba=False"
+                )
+        merge = _jitted[0]
+    else:
+        merge = _merge
     builder = ak.ArrayBuilder()
     merge(table1[key], table2[key], builder)
     merge_index = builder.snapshot()

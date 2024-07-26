@@ -34,4 +34,4 @@ jobs:
         pip list
     - name: test
       run: |
-        python -m pytest -v
+        python -m pytest -v --cov akimbo
