@@ -150,7 +150,7 @@ def get_avro_schema(
     url: str,
     storage_options: dict | None = None,
 ):
-    """Fetch ak form of tthe schema defined in given avro file"""
+    """Fetch ak form of the schema defined in given avro file"""
     from awkward._connect.avro import ReadAvroFT
 
     with fsspec.open(url, "rb", **(storage_options or {})) as f:

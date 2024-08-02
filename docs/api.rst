@@ -58,3 +58,8 @@ to see the operations available.
 
 .. autoclass:: akimbo.strings.StringAccessor
    :members:
+
+.. raw:: html
+
+    <script data-goatcounter="https://akimbo.goatcounter.com/count"
+            async src="//gc.zgo.at/count.js"></script>

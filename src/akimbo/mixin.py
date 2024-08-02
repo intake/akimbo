@@ -277,7 +277,7 @@ class Accessor(ArithmeticMixin):
         sort: if False, assumes that they key is sorted in both tables. If True, an
             argsort is performed first, and the match is done by indexing. This may be
             significantly slower.
-        rkey: if the name of the field to match on in different in the ``other`` table.
+        rkey: if the name of the field to match on is different in the ``other`` table.
         numba: the matching algorithm will go much faster using numba. However, you can
             set this to False if you do not have numba installed.
         """

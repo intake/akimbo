@@ -28,3 +28,8 @@ Optional dependencies
 
 - ``pyarrow``: for reading and writing data stored in parquet files, and for
   for the ``.str`` and ``.dt`` accessor attributes.
+
+.. raw:: html
+
+    <script data-goatcounter="https://akimbo.goatcounter.com/count"
+            async src="//gc.zgo.at/count.js"></script>
