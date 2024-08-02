@@ -99,3 +99,9 @@ operator overloads.
    :caption: API Reference
 
    api.rst
+
+
+.. raw:: html
+
+    <script data-goatcounter="https://akimbo.goatcounter.com/count"
+            async src="//gc.zgo.at/count.js"></script>

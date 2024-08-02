@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+# re-exports
 from awkward import behavior
-from awkward import metadata_from_parquet as get_parquet_schema  # re-export
+from awkward import metadata_from_parquet as get_parquet_schema
 from awkward import mixin_class, mixin_class_method
 
 import akimbo.datetimes as datetimes
