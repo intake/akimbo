@@ -6,7 +6,6 @@ Requirements
 
 To install ``akimbo`` you will need ``awkward`` and
 one of the backend libraries: ``pandas``, ``dask`` or ``polars``.
-In addition, for string and datetime functions, you will need ``pyarrow``.
 
 
 From PyPI
@@ -23,11 +22,6 @@ From conda-forge
 
    $ conda install akimbo -c conda-forge
 
-Optional dependencies
-~~~~~~~~~~~~~~~~~~~~~
-
-- ``pyarrow``: for reading and writing data stored in parquet files, and for
-  for the ``.str`` and ``.dt`` accessor attributes.
 
 .. raw:: html
 
