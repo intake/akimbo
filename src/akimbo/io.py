@@ -98,7 +98,7 @@ def get_json_schema(
 ):
     """Get JSONSchema representation of the contents of a line-delimited JSON file
 
-    Currently requires dask_awkward to be installed, which in turn required dask
+    Currently, requires dask_awkward to be installed, which in turn required dask
 
     Parameters
     ----------
