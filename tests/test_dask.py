@@ -4,11 +4,7 @@ import pytest
 
 dd = pytest.importorskip("dask.dataframe")
 
-<<<<<<< HEAD
-import awkward_pandas.dask  # noqa
-=======
 import akimbo.dask  # noqa
->>>>>>> main
 
 
 def test_simple_map():

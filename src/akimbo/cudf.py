@@ -5,9 +5,9 @@ import awkward as ak
 from cudf import DataFrame, Series
 from cudf.core.column.string import StringMethods
 
-from awkward_pandas.ak_from_cudf import cudf_to_awkward as from_cudf
-from awkward_pandas.mixin import Accessor
-from awkward_pandas.strings import StringAccessor
+from akimbo.ak_from_cudf import cudf_to_awkward as from_cudf
+from akimbo.mixin import Accessor
+from akimbo.strings import StringAccessor
 
 
 class CudfStringAccessor(StringAccessor):

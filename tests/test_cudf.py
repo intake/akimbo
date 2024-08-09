@@ -2,7 +2,7 @@ import pytest
 
 import awkward as ak
 
-pytest.importorskip("awkward_pandas.cudf")
+pytest.importorskip("akimbo.cudf")
 
 
 def test_operator_overload():
