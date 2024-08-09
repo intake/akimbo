@@ -53,6 +53,7 @@ def read_json(
     extract: whether to turn top-level records into a dataframe. If False,
         will return a series.
     """
+    # TODO: take JSONschema input explicitly
     with fsspec.open(url, **storage_options) as f:
         ds = ak.from_json(
             f,
@@ -63,3 +64,8 @@ def read_json(
     if extract:
         return s.ak.unmerge()
     return s
+
+
+# TODO: read_avro
+
+# TODO: to_parquet, to_json

@@ -2,9 +2,9 @@ import pandas as pd
 import pyarrow as pa
 import pytest
 
-import awkward_pandas.dask  # noqa
-
 dd = pytest.importorskip("dask.dataframe")
+
+import awkward_pandas.dask  # noqa
 
 
 def test_simple_map():

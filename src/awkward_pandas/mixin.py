@@ -134,9 +134,13 @@ class Accessor(ArithmeticMixin):
     aggregations = True  # False means data is partitioned
     series_type = ()
     dataframe_type = ()
+    behavior = None
 
     def __init__(self, obj):
         self._obj = obj
+
+    def __call__(self, *args, behavior=None, **kwargs):
+        self.behavior = behavior
 
     @classmethod
     def is_series(cls, data):
