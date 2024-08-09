@@ -1,4 +1,5 @@
 import functools
+from typing import Iterable
 
 import awkward as ak
 import dask.dataframe as dd
@@ -7,11 +8,27 @@ from dask.dataframe.extensions import (
     register_series_accessor,
 )
 
-from awkward_pandas.mixin import Accessor as AkAccessor
-from awkward_pandas.pandas import PandasAwkwardAccessor
+from akimbo.mixin import Accessor as AkAccessor
+from akimbo.mixin import df_methods, series_methods
+from akimbo.pandas import PandasAwkwardAccessor
 
 
 class DaskAwkwardAccessor(AkAccessor):
+    """Perform awkward operations on a dask series or frame
+
+    These operations are lazy, because of how dask works. Note
+    that we use mapping operations here, so any action on
+    axis==0 or 1 will produce results per partition, which
+    you must then combine.
+
+    To perform intra-partition operations, we recommend you
+    use the ``.to_dask_awkward`` method.
+
+    Correct arrow dtypes will be deduced when the input is
+    also arrow, which is now the default for the dask
+    "dataframe.dtype_backend" config options.
+    """
+
     series_type = dd.Series
     dataframe_type = dd.DataFrame
     aggregations = False  # you need dask-awkward for that
@@ -22,6 +39,23 @@ class DaskAwkwardAccessor(AkAccessor):
         data = data._meta if hasattr(data, "_meta") else data
         arr = PandasAwkwardAccessor.to_arrow(data)
         return ak.to_backend(ak.from_arrow(arr), "typetracer")
+
+    def to_dask_awkward(self):
+        """Convert to dask-awkard.Array object
+
+        This make a s single complex awkward array type out of one or more columns.
+        You would do this, in order to use dask-awkward's more advanced inter-
+        partition aggregations and optimisation.
+        See https://dask-awkward.readthedocs.io/
+
+        c.f., dask_awkward.to_dataframe
+        """
+        import dask_awkward as dak
+
+        tt = self._to_tt(self._obj)
+        return dak.lib.core.new_array_object(
+            self._obj.dask, divisions=self._obj.divisions, name=self._obj._name, meta=tt
+        )
 
     @classmethod
     def _create_op(cls, op):
@@ -38,14 +72,10 @@ class DaskAwkwardAccessor(AkAccessor):
                     ak.typetracer.length_zero_if_typetracer(out)
                 )
             except (ValueError, TypeError):
-                # could make our own fallback as follows, but dask will guess anyway
-                # orig = self._obj.head()
-                # ar = (ar.head() if hasattr(ar, "ak") else ar for ar in args)
-                # meta = PandasAwkwardAccessor._to_output(op(orig.ak.array, *ar, **kwargs))
                 meta = None
 
             def inner(data, _=DaskAwkwardAccessor):
-                import awkward_pandas.pandas  # noqa: F401
+                import akimbo.pandas  # noqa: F401
 
                 ar2 = (ar.ak.array if hasattr(ar, "ak") else ar for ar in args)
                 out = op(data.ak.array, *ar2, **kwargs)
@@ -66,7 +96,7 @@ class DaskAwkwardAccessor(AkAccessor):
             @functools.wraps(func)
             def f(*others, **kwargs):
                 def func2(data):
-                    import awkward_pandas.pandas  # noqa: F401
+                    import akimbo.pandas  # noqa: F401
 
                     # data and others are pandas objects here
                     return getattr(data.ak, item)(*others, **kwargs)
@@ -76,6 +106,11 @@ class DaskAwkwardAccessor(AkAccessor):
         else:
             raise AttributeError(item)
         return f
+
+    def __dir__(self) -> Iterable[str]:
+        attrs = (_ for _ in dir(self._obj._meta.ak.array) if not _.startswith("_"))
+        meths = series_methods if self.is_series(self._obj) else df_methods
+        return sorted(set(attrs) | set(meths))
 
 
 register_series_accessor("ak")(DaskAwkwardAccessor)

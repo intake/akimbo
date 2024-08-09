@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import functools
 import operator
 from typing import Callable, Iterable
@@ -134,10 +136,11 @@ class Accessor(ArithmeticMixin):
     aggregations = True  # False means data is partitioned
     series_type = ()
     dataframe_type = ()
-    behavior = None
+    subaccessors = {}
 
-    def __init__(self, obj):
+    def __init__(self, obj, behavior=None):
         self._obj = obj
+        self._behavior = behavior
 
     def __call__(self, *args, behavior=None, **kwargs):
         self.behavior = behavior
@@ -152,29 +155,64 @@ class Accessor(ArithmeticMixin):
 
     @classmethod
     def _to_output(cls, data):
+        # TODO: clarify protocol here; can data be in arrow already?
         raise NotImplementedError
 
     def to_output(self, data=None):
         data = data if data is not None else self.array
+        if not isinstance(data, Iterable):
+            return data
         return self._to_output(data)
 
-    def apply(self, fn: Callable, *args, **kwargs):
-        """Perform arbitrary function on all the values of the series"""
-        return self.to_output(fn(self.array, *args, **kwargs))
+    def apply(self, fn: Callable, where=None, **kwargs):
+        """Perform arbitrary function on all the values of the series
+
+        The function should take an ak array as input and produce an
+        ak array or scalar.
+        """
+        if where:
+            bits = tuple(where.split("."))
+            arr = self.array
+            part = arr.__getitem__(bits)
+            out = fn(part, **kwargs)
+            final = ak.with_field(arr, out, where=where)
+        else:
+            final = fn(self.array)
+        return self.to_output(final)
 
     def __getitem__(self, item):
         out = self.array.__getitem__(item)
         return self.to_output(out)
 
     def __dir__(self) -> Iterable[str]:
-        return series_methods if self.is_series(self._obj) else df_methods
+        attrs = (_ for _ in dir(self.array) if not _.startswith("_"))
+        meths = series_methods if self.is_series(self._obj) else df_methods
+        return sorted(set(attrs) | set(meths))
+
+    def with_behavior(self, behavior, where=()):
+        """Assign a behavior to this array-of-records"""
+        # TODO: compare usage with sub-accessors
+        # TODO: implement where= (assign directly to ._paraneters["__record__"]
+        #  of output's layout. In this case, behaviour is a dict of locations to apply to.
+        #  and we can continually add to it (or accept a dict)
+        # beh = self._behavior.copy()
+        # if isinstance(behavior, dict):
+        #    beh.update(behavior)
+        # else:
+        #    # str or type
+        #    beh[where] = behaviour
+        return type(self)(self._obj, behavior)
+
+    with_name = with_behavior  # alias - this is the upstream name
+
+    asa = with_behavior  # favoured name
 
     def __array_function__(self, *args, **kwargs):
         return self.array.__array_function__(*args, **kwargs)
 
     def __array_ufunc__(self, *args, **kwargs):
         if args[1] == "__call__":
-            return args[0](self.array, *args[3:], **kwargs)
+            return self.to_output(args[0](self.array, *args[3:], **kwargs))
         raise NotImplementedError
 
     @property
@@ -190,21 +228,12 @@ class Accessor(ArithmeticMixin):
     @property
     def array(self) -> ak.Array:
         """Data as an awkward array"""
-        return ak.from_arrow(self.arrow)
+        return ak.with_name(ak.from_arrow(self.arrow), self._behavior)
 
-    @property
-    def str(self):
-        """Nested string operations"""
-        from awkward_pandas.strings import StringAccessor
-
-        return StringAccessor(self)
-
-    @property
-    def dt(self):
-        """Nested datetime operations"""
-        from awkward_pandas.datetimes import DatetimeAccessor
-
-        return DatetimeAccessor(self)
+    @classmethod
+    def register_accessor(cls, name, klass):
+        # TODO: check clobber?
+        cls.subaccessors[name] = klass
 
     def merge(self):
         """Make a single complex series out of the columns of a dataframe"""
@@ -226,6 +255,42 @@ class Accessor(ArithmeticMixin):
         out = {k: self.to_output(arr[k]) for k in arr.fields}
         return self.dataframe_type(out)
 
+    def join(
+        self,
+        other,
+        key: str,
+        colname: str = "match",
+        sort: bool = False,
+        rkey: str | None = None,
+        numba: bool = True,
+    ):
+        """DB ORM-style left join to other dataframe/series with nesting but no copy
+
+        Related records of the ``other`` table will appear as a list under the new field
+        ``colname`` for all matching keys. This is the speed and memory efficient way
+        to doing a pandas-style merge/join, which explodes out the values to a much
+        bigger memory footprint.
+
+        Parameters
+        ----------
+        other: series or table
+        key: name of the field in this table to match on
+        colname: the field that will be added to each record. This field will exist even
+            if there are no matches, in which case the list will be empty.
+        sort: if False, assumes that they key is sorted in both tables. If True, an
+            argsort is performed first, and the match is done by indexing. This may be
+            significantly slower.
+        rkey: if the name of the field to match on is different in the ``other`` table.
+        numba: the matching algorithm will go much faster using numba. However, you can
+            set this to False if you do not have numba installed.
+        """
+        from akimbo.io import join
+
+        out = join(
+            self.array, other.ak.array, key, colname=colname, sort=sort, rkey=rkey
+        )
+        return self.to_output(out)
+
     @classmethod
     def _create_op(cls, op):
         """Make functions to perform all the arithmetic, logical and comparison ops"""
@@ -238,34 +303,38 @@ class Accessor(ArithmeticMixin):
         return run
 
     def __getattr__(self, item):
-        if item not in dir(self):
-            raise AttributeError
-        func = getattr(ak, item, None)
-
-        if func:
-
-            @functools.wraps(func)
-            def f(*others, **kwargs):
-                others = [
-                    other.ak.array
-                    if isinstance(other, (self.series_type, self.dataframe_type))
-                    else other
-                    for other in others
-                ]
-                kwargs = {
-                    k: v.ak.array
-                    if isinstance(v, (self.series_type, self.dataframe_type))
-                    else v
-                    for k, v in kwargs.items()
-                }
-
-                ak_arr = func(self.array, *others, **kwargs)
-                if isinstance(ak_arr, ak.Array):
-                    return self.to_output(ak_arr)
-                return ak_arr
-
+        arr = self.array
+        if hasattr(arr, item) and callable(getattr(arr, item)):
+            func = getattr(arr, item)
+            args = ()
+        elif item in self.subaccessors:
+            return self.subaccessors[item](self)
+        elif hasattr(ak, item):
+            func = getattr(ak, item)
+            args = (arr,)
         else:
             raise AttributeError(item)
+
+        @functools.wraps(func)
+        def f(*others, **kwargs):
+            others = [
+                other.ak.array
+                if isinstance(other, (self.series_type, self.dataframe_type))
+                else other
+                for other in others
+            ]
+            kwargs = {
+                k: v.ak.array
+                if isinstance(v, (self.series_type, self.dataframe_type))
+                else v
+                for k, v in kwargs.items()
+            }
+
+            ak_arr = func(*args, *others, **kwargs)
+            if isinstance(ak_arr, ak.Array):
+                return self.to_output(ak_arr)
+            return ak_arr
+
         return f
 
     def __init_subclass__(cls, **kwargs):

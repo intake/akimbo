@@ -1,13 +1,25 @@
-# awkward-pandas
+# akimbo
 
-> Awkward Array extension for use in pandas.
+**For when your data won't fit in your dataframe**
 
-[![Tests](https://github.com/intake/awkward-pandas/actions/workflows/pypi.yml/badge.svg)](https://github.com/intake/awkward-pandas/actions/workflows/pypi.yml)
-[![Documentation Status](https://readthedocs.org/projects/awkward-pandas/badge/?version=latest)](https://awkward-pandas.readthedocs.io/en/latest/?badge=latest)
+[![Tests](https://github.com/intake/akimbo/actions/workflows/pypi.yml/badge.svg)](https://github.com/intake/akimbo/actions/workflows/pypi.yml)
+[![Documentation Status](https://readthedocs.org/projects/akimbo/badge/?version=latest)](https://akimbo.readthedocs.io/en/latest/?badge=latest)
+
+Akimbo provides fast vectorized processing of nested, ragged data
+in dataframes, using the ``.ak`` accessor.
+
+### Features
+
+- numpy-like API for slicing and accessing data deep in nested structures
+- apply any function, ufunc or aggregation at any level
+- use with different backends: pandas, polars, dask-dataframe and cuDF
+  exactly the same way (more backends may come in the future)
+- CPU and GPU processing and support for ``numba``-jit
+- attach object-like behaviours to your record (sub)structures
 
 See the [quick
-start](https://awkward-pandas.readthedocs.io/en/latest/quickstart.html)
-in the documentation for an introduction to awkward-pandas.
+start](https://akimbo.readthedocs.io/en/latest/quickstart.html)
+in the documentation for an introduction to akimbo.
 
 Acknowledgements
 ----------------

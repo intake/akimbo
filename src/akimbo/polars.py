@@ -1,12 +1,14 @@
 import awkward as ak
 import polars as pl
 
-from awkward_pandas.mixin import Accessor
+from akimbo.mixin import Accessor
 
 
 @pl.api.register_series_namespace("ak")
 @pl.api.register_dataframe_namespace("ak")
 class PolarsAwkwardAccessor(Accessor):
+    """Perform awkward operations on a polars series or dataframe"""
+
     series_type = pl.Series
     dataframe_type = pl.DataFrame
 

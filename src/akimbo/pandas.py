@@ -1,14 +1,24 @@
+from collections.abc import Iterable
+
 import awkward as ak
 import pandas as pd
 import pyarrow
 import pyarrow as pa
 
-from awkward_pandas.mixin import Accessor
+from akimbo.mixin import Accessor
 
 
 @pd.api.extensions.register_series_accessor("ak")
 @pd.api.extensions.register_dataframe_accessor("ak")
 class PandasAwkwardAccessor(Accessor):
+    """Perform awkward operations on pandas data
+
+    Nested structures are handled using arrow as the
+    storage backend. If you use pandas object columns
+    (python lists, dicts, strings), they will be converted
+    on any access to a ``.ak`` method.
+    """
+
     series_type = pd.Series
     dataframe_type = pd.DataFrame
 
@@ -32,12 +42,14 @@ class PandasAwkwardAccessor(Accessor):
 
     def to_output(self, data=None):
         # override to apply index
-        data = data if data is not None else self.array
+        data: ak.Array = data if data is not None else self.array
+        if not isinstance(data, Iterable):
+            return data
         arr = pd.arrays.ArrowExtensionArray(ak.to_arrow(data, extensionarray=False))
         if self._obj is not None and len(arr) == len(self._obj.index):
             return pd.Series(arr, index=self._obj.index)
         else:
-            return arr
+            return pd.Series(arr)
 
     @staticmethod
     def _validate(_):

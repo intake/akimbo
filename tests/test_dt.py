@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-import awkward_pandas.pandas  # noqa
+import akimbo.pandas  # noqa
 
 pd = pytest.importorskip("pandas")
 
@@ -28,8 +28,8 @@ def test_unary_unit():
 def test_bad_type():
     # consider more specific exception rather than hitting arrow's one
     s = pd.Series([[0, 1], [1, 0], [2]])
-    with pytest.raises(NotImplementedError):
-        s.ak.dt.second()
+    out = s.ak.dt.second()
+    assert s.to_list() == out.to_list()
 
 
 def test_binary():
@@ -57,3 +57,15 @@ def test_binary_with_kwargs():
     assert out.tolist() == [[2, 2], [2, 2], [2]]
     out = ts1.ak.dt.weeks_between(ts2, count_from_zero=False, week_start=5)
     assert out.tolist() == [[3, 3], [3, 3], [3]]
+
+
+def test_mixed_record():
+    data = [{"a": [0, 1], "b": "ha"}, {"a": [1, 0], "b": "ha"}, {"a": [2], "b": "ha"}]
+    s = pd.Series(data)
+
+    # explicit select of where to apply transform
+    ts = s.ak.dt.cast("timestamp[s]", where="a")
+
+    # implicit selection of timestamps
+    s2 = ts.ak.dt.second()
+    assert s2.to_list() == data
