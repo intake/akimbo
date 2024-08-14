@@ -87,6 +87,19 @@ define will appear on the ``.ak`` accessor or can be used for ufunc and
 operator overloads.
 
 
+Sub-accessors
+~~~~~~~~~~~~~
+
+As an alternative to the object-oriented behaviours, developers may create
+accessor namespaces that appear under ``.ak`` similar to the the builtin
+``.ak.str`` (strings ops) snd ``.ak.dt`` (datetime ops) included already.
+
+One experimental proof-of-concept is `akimbo-ip`_, which provides fast vectorised
+manipulations of IPv4/6 addresses and networks; and by using this through
+the ``akimbo`` system, you can apply these methods to ragged/nested dataframes.
+
+.. _akimbo-ip: https://github.com/intake/akimbo-ip
+
 .. toctree::
    :maxdepth: 1
    :caption: User Guide
