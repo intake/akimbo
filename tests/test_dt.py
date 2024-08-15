@@ -1,12 +1,12 @@
 import datetime
-import sys
+import os
 
 import pytest
 
 import akimbo.pandas  # noqa
 
 pd = pytest.importorskip("pandas")
-WIN = "nt" in sys.platform
+WIN = os.name == "nt"
 
 
 def test_cast():
