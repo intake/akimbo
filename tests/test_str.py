@@ -31,11 +31,11 @@ def test_encode_decode():
 
 
 def test_split():
-    s = pd.Series(["hello world", "oio", ""])
+    s = pd.Series(["hello world", "oio", pd.NA, ""])
     s2 = s.ak.str.split_whitespace()
-    assert s2.tolist() == [["hello", "world"], ["oio"], [""]]
+    assert s2.tolist() == [["hello", "world"], ["oio"], pd.NA, [""]]
     s2 = s.ak.str.split_pattern("i")
-    assert s2.tolist() == [["hello world"], ["o", "o"], [""]]
+    assert s2.tolist() == [["hello world"], ["o", "o"], pd.NA, [""]]
 
     s = pd.Series([b"hello world", b"oio", b""])
     s2 = s.ak.str.split_whitespace()

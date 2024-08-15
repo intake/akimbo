@@ -5,6 +5,9 @@ import operator
 from typing import Callable, Iterable
 
 import awkward as ak
+import pyarrow.compute as pc
+
+from akimbo.apply_tree import dec
 
 methods = [
     _ for _ in (dir(ak)) if not _.startswith(("_", "ak_")) and not _[0].isupper()
@@ -141,6 +144,16 @@ class Accessor(ArithmeticMixin):
     def __init__(self, obj, behavior=None):
         self._obj = obj
         self._behavior = behavior
+
+    def __call__(self, *args, behavior=None, **kwargs):
+        return Accessor(self._obj, behavior=behavior)
+
+    cast = dec(pc.cast)
+
+    @property
+    def accessor(self):
+        # if we use `dec`, which expects to work on
+        return self
 
     @classmethod
     def is_series(cls, data):
