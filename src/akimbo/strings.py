@@ -4,6 +4,7 @@ import functools
 from collections.abc import Callable
 
 import awkward as ak
+import pyarrow.compute as pc
 
 from akimbo.apply_tree import dec
 from akimbo.mixin import Accessor
@@ -50,6 +51,12 @@ methods = [
     if not aname.startswith(("_", "akstr_")) and not aname[0].isupper()
 ]
 
+# make sensible defaults for strptime
+strptime = functools.wraps(pc.strptime)(
+    lambda *args, format="%FT%T", unit="s", error_is_null=True, **kw:
+        pc.strptime(*args, format=format, unit=unit, error_is_null=error_is_null)
+)
+
 
 class StringAccessor:
     """String operations on nested/var-length data"""
@@ -94,8 +101,10 @@ class StringAccessor:
 
         return f
 
+    strptime = dec(strptime, match=match_string)
+
     def __dir__(self) -> list[str]:
-        return sorted(methods)
+        return sorted(methods + ["strptime"])
 
 
 Accessor.register_accessor("str", StringAccessor)
