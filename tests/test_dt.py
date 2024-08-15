@@ -1,12 +1,12 @@
 import datetime
+import sys
 
 import pytest
-
-import pyarrow as pa
 
 import akimbo.pandas  # noqa
 
 pd = pytest.importorskip("pandas")
+WIN = "nt" in sys.platform
 
 
 def test_cast():
@@ -73,6 +73,7 @@ def test_mixed_record():
     assert s2.to_list() == data
 
 
+@pytest.mark.skipif(WIN, reason="arrow on windows needs a timezone database")
 def test_text_conversion():
     s = pd.Series([["2024-08-01T01:00:00", None, "2024-08-01T01:01:00"]])
     s2 = s.ak.str.strptime()
