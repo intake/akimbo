@@ -2,30 +2,40 @@ import functools
 from typing import Callable
 
 import awkward as ak
+import cudf
 from cudf import DataFrame, Series
 from cudf.core.column.string import StringMethods
 
 from akimbo.ak_from_cudf import cudf_to_awkward as from_cudf
 from akimbo.mixin import Accessor
 from akimbo.strings import StringAccessor
+from akimbo.apply_tree import dec
+
+
+def match_string(arr):
+    return arr.parameters.get("__array__", "") == "string"
 
 
 class CudfStringAccessor(StringAccessor):
     def decode(self, encoding: str = "utf-8"):
         raise NotImplementedError("cudf does not support bytearray type, so we can't automatically identify them")
 
-    def __getattr__(self, attr: str) -> Callable:
-        attr = StringAccessor.method_name(attr)
-        fn = getattr(StringMethods(self.accessor._obj), attr)
+    def encode(self, encoding: str = "utf-8"):
+        raise NotImplementedError("cudf does not support bytearray type")
 
-        @functools.wraps(fn)
-        def f(*args, **kwargs):
-            arr = fn(self.accessor._obj, *args, **kwargs)
-            if isinstance(arr, ak.Array):
-                return self.accessor.to_output(arr)
-            return arr
 
-        return f
+for meth in dir(StringMethods):
+    if meth.startswith("_"):
+        continue
+
+    def f(lay, *args, method=meth, **kwargs):
+        if not match_string(lay):
+            return
+
+        col = getattr(StringMethods(cudf.Series(lay._to_cudf(cudf, None, len(lay)))), method)(*args, **kwargs)
+        return from_cudf(col).layout
+
+    setattr(CudfStringAccessor, meth, dec(func=f, match=match_string, inmode="ak"))
 
 
 class CudfAwkwardAccessor(Accessor):
