@@ -232,6 +232,30 @@ class Accessor(ArithmeticMixin):
         # TODO: check clobber?
         cls.subaccessors[name] = klass
 
+    def rename(self, where, to):
+        """Assign new field name to given location in the structure
+
+        Parameters
+        ----------
+        where: str | tuple[str]
+            location we would like to rename
+        to: str
+            new name
+        """
+        arr = self.array
+        lay = ak.copy(arr.layout)
+        where = list(where) if isinstance(where, tuple) else [where]
+        parent = None
+        bit = lay
+        while where:
+            if getattr(bit, "contents", None):
+                this = bit.fields.index(where.pop(0))
+                parent, bit = bit, bit.contents[this]
+            else:
+                parent, bit = bit, bit.content
+        parent.fields[this] = to
+        return self.to_output(ak.Array(lay))
+
     def merge(self):
         """Make a single complex series out of the columns of a dataframe"""
         if not self.is_dataframe(self._obj):

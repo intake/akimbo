@@ -56,3 +56,17 @@ def test_to_autoarrow():
     s2 = s.ak.to_output()
     assert s2.tolist() == a
     assert "pyarrow" in str(s2.dtype)
+
+
+def test_rename():
+    a = [{"a": [{"b": {"c": 0}}] * 2}] * 3
+    s = pd.Series(a)
+
+    s2 = s.ak.rename(("a", "b"), "d")
+    assert s2.tolist() == [{"a": [{"d": {"c": 0}}] * 2}] * 3
+
+    s2 = s.ak.rename("a", "d")
+    assert s2.tolist() == [{"d": [{"b": {"c": 0}}] * 2}] * 3
+
+    s2 = s.ak.rename(("a", "b", "c"), "d")
+    assert s2.tolist() == [{"a": [{"b": {"d": 0}}] * 2}] * 3
