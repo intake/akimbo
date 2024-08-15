@@ -20,7 +20,6 @@ class DatetimeAccessor:
 
     # listed below https://arrow.apache.org/docs/python/generated/
     # pyarrow.compute.ceil_temporal.html
-    cast = dec(pc.cast)  # TODO: move to .ak
     ceil_temporal = dec_t(pc.ceil_temporal)
     floor_temporal = dec_t(pc.floor_temporal)
     reound_temporal = dec_t(pc.round_temporal)
@@ -62,7 +61,7 @@ class DatetimeAccessor:
     weeks_between = dec_t(pc.weeks_between)
     years_between = dec_t(pc.years_between)
 
-    # TODO: strftime, strptime
+    strftime = dec_t(pc.strftime)
 
     # TODO: timezone conversion
 
