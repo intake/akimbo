@@ -52,6 +52,8 @@ methods = [
 
 
 class StringAccessor:
+    """String operations on nested/var-length data"""
+
     def __init__(self, accessor):
         self.accessor = accessor
 

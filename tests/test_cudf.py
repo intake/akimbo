@@ -24,3 +24,16 @@ def test_string_methods():
     series = cudf.Series(s)
     s2 = series.ak.str.upper()
     assert s2.ak.to_list() == [{"s": ["HEY", "HO"], "i": [0]}, {"s": ["GAR", "GO"], "i": [2]}]
+
+    assert series.ak.str.upper.__doc__
+    # kwargs
+    s2 = series.ak.str.replace(pat="h", repl="B")
+    assert s2.ak.to_list() == [{"s": ["Bey", "Ho"], "i": [0]}, {"s": ["Gar", "go"], "i": [2]}]
+
+    # positional args
+    s2 = series.ak.str.replace("h", "B")
+    assert s2.ak.to_list() == [{"s": ["Bey", "Ho"], "i": [0]}, {"s": ["Gar", "go"], "i": [2]}]
+
+    # non-str output
+    s2 = series.ak.str.len()
+    assert s2.ak.to_list() == [{"s": [3, 2], "i": [0]}, {"s": [3, 2], "i": [2]}]

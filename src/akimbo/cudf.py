@@ -17,6 +17,8 @@ def match_string(arr):
 
 
 class CudfStringAccessor(StringAccessor):
+    """String operations on nested/var-length data"""
+
     def decode(self, encoding: str = "utf-8"):
         raise NotImplementedError("cudf does not support bytearray type, so we can't automatically identify them")
 
@@ -28,10 +30,13 @@ for meth in dir(StringMethods):
     if meth.startswith("_"):
         continue
 
+    @functools.wraps(getattr(StringMethods, meth))
     def f(lay, *args, method=meth, **kwargs):
         if not match_string(lay):
             return
 
+        # unnecessary round-tripping, and repeating logic from `dec`?
+        args = args or kwargs.pop("args", ())
         col = getattr(StringMethods(cudf.Series(lay._to_cudf(cudf, None, len(lay)))), method)(*args, **kwargs)
         return from_cudf(col).layout
 
