@@ -1,3 +1,5 @@
+import datetime
+
 import pytest
 
 import pyarrow as pa
@@ -5,6 +7,7 @@ import awkward as ak
 
 pytest.importorskip("akimbo.cudf")
 
+import akimbo.io
 import cudf
 
 
@@ -37,3 +40,28 @@ def test_string_methods():
     # non-str output
     s2 = series.ak.str.len()
     assert s2.ak.to_list() == [{"s": [3, 2], "i": [0]}, {"s": [3, 2], "i": [2]}]
+
+
+def test_cast():
+    s = cudf.Series([0, 1, 2])
+    # shows that cast to timestamp needs to be two-step in cudf
+    s2 = s.ak.cast('m8[s]').ak.cast('M8[s]')
+    out = s2.ak.to_list()
+    assert out == [
+        datetime.datetime(1970, 1, 1, 0, 0),
+        datetime.datetime(1970, 1, 1, 0, 0, 1),
+        datetime.datetime(1970, 1, 1, 0, 0, 2)
+    ]
+
+
+def test_times():
+    data = [
+        datetime.datetime(1970, 1, 1, 0, 0),
+        datetime.datetime(1970, 1, 1, 0, 0, 1),
+        None,
+        datetime.datetime(1970, 1, 1, 0, 0, 2)
+    ]
+    arr = ak.Array([[data], [], [data]])
+    s = akimbo.io.ak_to_series(arr, "cudf")
+    s2 = s.ak.dt.second
+    assert s2.ak.to_list() == [[[0, 1, None, 2]], [], [[0, 1, None, 2]]]
