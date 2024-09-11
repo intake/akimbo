@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import awkward as ak
 import fsspec
+import numpy as np
 
 
 def ak_to_series(ds, backend="pandas", extract=True):
@@ -223,10 +224,45 @@ def join(
         merge = _jitted[0]
     else:
         merge = _merge
-    builder = ak.ArrayBuilder()
-    merge(table1[key], table2[key], builder)
-    merge_index = builder.snapshot()
-    indexed = table2[ak.flatten(merge_index)]
-    counts = ak.num(merge_index)
+    # builder = ak.ArrayBuilder()
+    # merge(table1[key], table2[key], builder)
+    # merge_index = builder.snapshot()
+    # indexed = table2[ak.flatten(merge_index)]
+    # counts = ak.num(merge_index)
+
+    counts, matches = merge(table1[key], table2[key])
+    indexed = table2[matches]
     listy = ak.unflatten(indexed, counts)
     return ak.with_field(table1, listy, colname)
+
+
+def _merge(ind1, ind2):
+    len2 = len(ind2)
+    counts = np.empty(len(ind1), dtype="uint32")
+    matches = np.empty(len2, dtype="uint64")
+    j = 0
+    offind = 0
+    matchind = 0
+    last = 0
+    for i in ind1:
+        while True:
+            if j >= len2:
+                break
+            if i > ind2[j]:
+                # ID not yet found
+                j += 1
+                continue
+            if i < ind2[j]:
+                # no more entrie
+                break
+            # hit
+            while True:
+                matches[matchind] = j
+                j += 1
+                matchind += 1
+                if j >= len2 or i != ind2[j]:
+                    break
+        counts[offind] = matchind - last
+        last = matchind
+        offind += 1
+    return counts, matches
