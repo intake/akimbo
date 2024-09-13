@@ -238,7 +238,9 @@ class Accessor(ArithmeticMixin):
     @property
     def array(self) -> ak.Array:
         """Data as an awkward array"""
-        return ak.with_name(ak.from_arrow(self.arrow), self._behavior)
+        if self._behavior:
+            return ak.with_name(ak.from_arrow(self.arrow), self._behavior)
+        return ak.from_arrow(self.arrow)
 
     @classmethod
     def register_accessor(cls, name, klass):

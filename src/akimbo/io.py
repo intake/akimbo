@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import awkward as ak
 import fsspec
+import numpy as np
 
 
 def ak_to_series(ds, backend="pandas", extract=True):
@@ -159,31 +160,6 @@ def get_avro_schema(
     return form
 
 
-def _merge(ind1, ind2, builder):
-    """numba jittable left join/merge index finder"""
-    len2 = len(ind2)
-    j = 0
-    for i in ind1:
-        builder.begin_list()
-        while True:
-            if j >= len2:
-                break
-            if i > ind2[j]:
-                # ID not yet found
-                j += 1
-                continue
-            if i < ind2[j]:
-                # no more entrie
-                break
-            # hit
-            while True:
-                builder.append(j)
-                j += 1
-                if j >= len2 or i != ind2[j]:
-                    break
-        builder.end_list()
-
-
 _jitted = [None]
 
 
@@ -223,10 +199,44 @@ def join(
         merge = _jitted[0]
     else:
         merge = _merge
-    builder = ak.ArrayBuilder()
-    merge(table1[key], table2[key], builder)
-    merge_index = builder.snapshot()
-    indexed = table2[ak.flatten(merge_index)]
-    counts = ak.num(merge_index)
+
+    counts = np.empty(len(table1), dtype="uint64")
+    # TODO: the line below over-allocates, can swithch to somehing growable
+    matches = np.empty(len(table2), dtype="uint64")
+    # TODO: to_numpy(allow_missong) makes this a bit faster, but is not
+    #  not GPU general
+    counts, matches, ind = merge(table1[key], table2[key], counts, matches)
+    matches.resize(int(ind), refcheck=False)
+    indexed = table2[matches]
     listy = ak.unflatten(indexed, counts)
     return ak.with_field(table1, listy, colname)
+
+
+def _merge(ind1, ind2, counts, matches):
+    len2 = len(ind2)
+    j = 0
+    offind = 0
+    matchind = 0
+    last = 0
+    for i in ind1:
+        while True:
+            if j >= len2:
+                break
+            if i > ind2[j]:
+                # ID not yet found
+                j += 1
+                continue
+            if i < ind2[j]:
+                # no more entrie
+                break
+            # hit
+            while True:
+                matches[matchind] = j
+                j += 1
+                matchind += 1
+                if j >= len2 or i != ind2[j]:
+                    break
+        counts[offind] = matchind - last
+        last = matchind
+        offind += 1
+    return counts, matches, matchind
