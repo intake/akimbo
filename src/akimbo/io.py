@@ -201,7 +201,7 @@ def join(
         merge = _merge
 
     counts = np.empty(len(table1), dtype="uint64")
-    # TODO: the line below over-allocates, can swithch to somehing growable
+    # TODO: the line below over-allocates, can switch to somehing growable
     matches = np.empty(len(table2), dtype="uint64")
     # TODO: to_numpy(allow_missong) makes this a bit faster, but is not
     #  not GPU general

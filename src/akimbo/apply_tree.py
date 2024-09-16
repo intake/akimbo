@@ -27,7 +27,7 @@ def run_with_transform(
     def func(layout, **kwargs):
         if not isinstance(layout, tuple):
             layout = (layout,)
-        if match(*layout, **(match_kwargs or {})):
+        if all(match(lay, **(match_kwargs or {})) for lay in layout):
             if inmode == "arrow":
                 out = ak.str._apply_through_arrow(
                     op, *layout, **kw, **(match_kwargs or {})
