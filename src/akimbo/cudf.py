@@ -59,7 +59,8 @@ class CudfDatetimeAccessor(DatetimeAccessor):
 
 
 for meth in dir(DatetimeColumn):
-    if meth.startswith("_"):
+    if meth.startswith("_") or meth == "strptime":
+        # strptime belongs in .str, not here!
         continue
 
     @functools.wraps(getattr(DatetimeColumn, meth))
