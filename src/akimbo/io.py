@@ -19,9 +19,13 @@ def ak_to_series(ds, backend="pandas", extract=True):
 
         # TODO: actually don't use this, use dask-awkward, or dask.dataframe
         s = akimbo.polars.PolarsAwkwardAccessor._to_output(ds)
+    elif backend == "cudf":
+        import akimbo.cudf
+
+        s = akimbo.cudf.CudfAwkwardAccessor._to_output(ds)
     else:
         raise ValueError("Backend must be in {'pandas', 'polars', 'dask'}")
-    if extract:
+    if extract and ds.fields:
         return s.ak.unmerge()
     return s
 

@@ -1,5 +1,6 @@
 # emacs
 .dir-locals.el
+.idea
 
 # setuptools_scm
 src/akimbo/version.py

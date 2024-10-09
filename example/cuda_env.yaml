@@ -1,0 +1,22 @@
+name: cuda
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - cuda-cudart
+  - cuda-version=12.2
+  - pycuda
+  - cupy
+  - numba
+  - awkward
+  - rapidsai::cudf
+  - ipython
+  - numba
+  - pyarrow
+  - pandas
+  - polars
+  - pytest
+  - distributed
+  - dask-awkward
+  - pytest
+  - rox
