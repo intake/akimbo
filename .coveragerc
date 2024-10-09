@@ -1,2 +1,2 @@
 [run]
-omit = akimbo/cudf.py
+omit = src/akimbo/cudf.py
