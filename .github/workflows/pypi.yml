@@ -34,4 +34,4 @@ jobs:
         pip list
     - name: test
       run: |
-        python -m pytest -v --cov akimbo
+        python -m pytest -v --cov --cov-config=.coveragerc akimbo
