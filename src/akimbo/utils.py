@@ -10,6 +10,8 @@ class NoAttributes:
     def __getattr__(self, item):
         if item == "__qualname__":
             return "akimbo.utils.DummyAttributesObject"
+        if item == "__type_params__":
+            return ()
         return self
 
     def __call__(self, *args, **kwargs):
