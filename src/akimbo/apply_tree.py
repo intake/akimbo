@@ -41,10 +41,12 @@ def run_with_transform(
     return ak.transform(func, arr, *others)
 
 
-def dec(func: callable, match: Callable[[ak.contents.Content], bool] = leaf,
-        outtype: Callable[[ak.contents.Content], ak.contents.Content] | None = None,
-        inmode: Literal["arrow", "numpy", "ak"] = "arrow"):
-
+def dec(
+    func: callable,
+    match: Callable[[ak.contents.Content], bool] = leaf,
+    outtype: Callable[[ak.contents.Content], ak.contents.Content] | None = None,
+    inmode: Literal["arrow", "numpy", "ak"] = "arrow",
+):
     """Make a nested/ragged version of an operation to apply throughout a tree
 
     Parameters
@@ -121,8 +123,8 @@ where: None | str | Sequence[str, ...]
 match_kwargs: None | dict
     any extra field identifiers for matching a record as OK to process
 
-{'-Kernel documentation follows from the original function-' if f.__doc__ else ''}
-===
+{'--Kernel documentation follows from the original function--' if f.__doc__ else ''}
+
 {f.__doc__ or str(f)}
 """
 

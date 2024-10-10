@@ -1,12 +1,18 @@
-import cudf
-import pyarrow
-import cupy
-import numpy
+from typing import Optional
 
+from akimbo.utils import NoAttributes
+
+try:
+    import cudf
+    import cupy
+except ImportError:
+    cudf = NoAttributes()
+    cupy = NoAttributes()
 import awkward as ak
-from awkward._backends.numpy import NumpyBackend
+import numpy
+import pyarrow
 from awkward._backends.cupy import CupyBackend
-
+from awkward._backends.numpy import NumpyBackend
 
 # COPIED from awkward/studies/cudf-to-awkward.py
 
@@ -351,7 +357,7 @@ def pyarrow_to_awkward(
 def recurse_finalize(
     out: ak.contents.Content,
     column: cudf.core.column.column.ColumnBase,
-    validbits: None | cudf.core.buffer.buffer.Buffer,
+    validbits: Optional[cudf.core.buffer.buffer.Buffer],
     generate_bitmasks: bool,
     fix_offsets: bool = True,
 ):
@@ -569,13 +575,15 @@ def recurse(
         validbits = column.base_mask
 
         to64, dt = _pyarrow_to_numpy_dtype.get(str(arrow_type), (False, None))
-        if to64:
-            data = cupy.asarray(data).view(cupy.int32).astype(cupy.int64)
         if dt is None:
             dt = arrow_type.to_pandas_dtype()
+        if to64:
+            data = cupy.asarray(column.base_data).view(cupy.int32).astype(cupy.int64)
+        else:
+            data = cupy.asarray(column.base_data)
 
         out = ak.contents.NumpyArray(
-            cupy.asarray(column.base_data).view(dt),
+            data.view(dt),
             parameters=None,
             backend=CupyBackend.instance(),
         )

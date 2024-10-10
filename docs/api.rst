@@ -24,9 +24,9 @@ Accessor
 .. autosummary::
    :toctree: generated/
 
-   akimbo.mixin.Accessor
+   Accessor
 
-.. autoclass:: akimbo.mixin.Accessor
+.. autoclass:: Accessor
    :members:
 
 
@@ -45,7 +45,7 @@ Backends
 
 .. autoclass:: akimbo.polars.PolarsAwkwardAccessor
 
-.. autoclass:: akimbo.polars.CudfAwkwardAccessor
+.. autoclass:: akimbo.cudf.CudfAwkwardAccessor
 
 
 Extensions
@@ -57,7 +57,7 @@ being acted on. Check the ``dir()`` of each (or use tab-completion)
 to see the operations available.
 
 .. autoclass:: akimbo.datetimes.DatetimeAccessor
-   :members: cast
+   :members:
 
 .. autoclass:: akimbo.strings.StringAccessor
    :members:
@@ -69,9 +69,3 @@ to see the operations available.
 
 The cuDF backend also has these implemented with GPU-specific variants,
 ``akimbo.cudf.CudfStringAccessor`` and ``akimbo.cudf.CudfDatetimeAccessor``.
-
-Adding Extensions (advanced)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The patterns used in the two builtin extensions above can be used to add
-type-specific functionality to ``akimbo``. One 
