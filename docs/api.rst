@@ -24,9 +24,9 @@ Accessor
 .. autosummary::
    :toctree: generated/
 
-   akimbo.mixin.Accessor
+   Accessor
 
-.. autoclass:: akimbo.mixin.Accessor
+.. autoclass:: Accessor
    :members:
 
 
@@ -37,12 +37,15 @@ Backends
     akimbo.pandas.PandasAwkwardAccessor
     akimbo.dask.DaskAwkwardAccessor
     akimbo.polars.PolarsAwkwardAccessor
+    akimbo.cudf.CudfAwkwardAccessor
 
 .. autoclass:: akimbo.pandas.PandasAwkwardAccessor
 
 .. autoclass:: akimbo.dask.DaskAwkwardAccessor
 
 .. autoclass:: akimbo.polars.PolarsAwkwardAccessor
+
+.. autoclass:: akimbo.cudf.CudfAwkwardAccessor
 
 
 Extensions
@@ -54,7 +57,7 @@ being acted on. Check the ``dir()`` of each (or use tab-completion)
 to see the operations available.
 
 .. autoclass:: akimbo.datetimes.DatetimeAccessor
-   :members: cast
+   :members:
 
 .. autoclass:: akimbo.strings.StringAccessor
    :members:
@@ -63,3 +66,6 @@ to see the operations available.
 
     <script data-goatcounter="https://akimbo.goatcounter.com/count"
             async src="//gc.zgo.at/count.js"></script>
+
+The cuDF backend also has these implemented with GPU-specific variants,
+``akimbo.cudf.CudfStringAccessor`` and ``akimbo.cudf.CudfDatetimeAccessor``.
