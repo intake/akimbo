@@ -37,12 +37,15 @@ Backends
     akimbo.pandas.PandasAwkwardAccessor
     akimbo.dask.DaskAwkwardAccessor
     akimbo.polars.PolarsAwkwardAccessor
+    akimbo.cudf.CudfAwkwardAccessor
 
 .. autoclass:: akimbo.pandas.PandasAwkwardAccessor
 
 .. autoclass:: akimbo.dask.DaskAwkwardAccessor
 
 .. autoclass:: akimbo.polars.PolarsAwkwardAccessor
+
+.. autoclass:: akimbo.polars.CudfAwkwardAccessor
 
 
 Extensions
@@ -63,3 +66,12 @@ to see the operations available.
 
     <script data-goatcounter="https://akimbo.goatcounter.com/count"
             async src="//gc.zgo.at/count.js"></script>
+
+The cuDF backend also has these implemented with GPU-specific variants,
+``akimbo.cudf.CudfStringAccessor`` and ``akimbo.cudf.CudfDatetimeAccessor``.
+
+Adding Extensions (advanced)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The patterns used in the two builtin extensions above can be used to add
+type-specific functionality to ``akimbo``. One 

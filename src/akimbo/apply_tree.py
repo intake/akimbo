@@ -1,16 +1,15 @@
+from __future__ import annotations
+
 import functools
 import inspect
-from typing import Sequence
+from typing import Callable, Literal, Sequence
 
 import awkward as ak
 import pyarrow as pa
 
 
-class NoDtype:
-    kind = ""
-
-
 def leaf(*layout, **_):
+    """True for the lowest elements of any akwward layout tree"""
     return layout[0].is_leaf
 
 
@@ -42,8 +41,20 @@ def run_with_transform(
     return ak.transform(func, arr, *others)
 
 
-def dec(func, match=leaf, outtype=None, inmode="arrow"):
-    """Make a nested/ragged version of an operation to apply throughout a tree"""
+def dec(func: callable, match: Callable[[ak.contents.Content], bool] = leaf,
+        outtype: Callable[[ak.contents.Content], ak.contents.Content] | None = None,
+        inmode: Literal["arrow", "numpy", "ak"] = "arrow"):
+
+    """Make a nested/ragged version of an operation to apply throughout a tree
+
+    Parameters
+    ----------
+    func: which we want to apply to (parts of) inputted data
+    match: function to determine if a part of the data structure matches the type we want to
+        operate on
+    outtype: postprocessing function after transform
+    inmode: how ``func`` expects its inputs: as awkward arrays (ak), numpy or arrow
+    """
 
     @functools.wraps(func)
     def f(self, *args, where=None, match_kwargs=None, **kwargs):
