@@ -23,7 +23,7 @@ identical syntax:
 - pandas
 - dask.dataframe
 - polars
-- cuDF (in development)
+- cuDF
 
 
 numpy-like API
@@ -34,6 +34,7 @@ for slicing and accessing data deep in nested structures,
 Example: choose every second inner element in a list-of-lists
 
 .. code-block:: python
+
     series.ak[:, ::2]
 
 Any function, ufunc or aggregation at any level
@@ -43,6 +44,7 @@ For manipulating numerics at deeper levels of your nested structures or
 ragged arrays while maintaining the original layout
 
 .. code-block:: python
+
     series.ak.abs()  # absolute for all numerical values
     series.ak.sum(axis=3)  # sum over deeply nested level
     series.ak + 1  # numpy-like broadcasting into deeper levels
@@ -52,6 +54,7 @@ arrays of values, and they will only affect the appropriate parts of the structu
 without changing the layout.
 
 .. code-block:: python
+
     series.ak.str.upper()
 
 CPU/GPU numba support
@@ -64,6 +67,7 @@ in groupby/window operations. If your data is on the GPU, you can
 use numba-cuda with slight modifications to your original function.
 
 .. code-block:: python
+
     @numba.njit
     def sum_list_of_list(x):
         total = 0

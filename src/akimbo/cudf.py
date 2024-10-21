@@ -2,16 +2,28 @@ import functools
 from typing import Callable
 
 import awkward as ak
-import cudf
-from cudf import DataFrame, Series, _lib as libcudf
-from cudf.core.column.string import StringMethods
-from cudf.core.column.datetime import DatetimeColumn
+
+from akimbo.utils import NoAttributes
+
+try:
+    import cudf
+    from cudf import DataFrame, Series
+    from cudf import _lib as libcudf
+    from cudf.core.column.datetime import DatetimeColumn
+    from cudf.core.column.string import StringMethods
+except ImportError:
+    StringMethods = NoAttributes()
+    DatetimeColumn = NoAttributes()
+    libcudf = NoAttributes()
+    DataFrame = Series = NoAttributes()
+
 
 from akimbo.ak_from_cudf import cudf_to_awkward as from_cudf
-from akimbo.mixin import Accessor
-from akimbo.datetimes import DatetimeAccessor, match as match_t
-from akimbo.strings import StringAccessor
 from akimbo.apply_tree import dec, leaf
+from akimbo.datetimes import DatetimeAccessor
+from akimbo.datetimes import match as match_t
+from akimbo.mixin import Accessor
+from akimbo.strings import StringAccessor
 
 
 def match_string(arr):
@@ -22,14 +34,15 @@ class CudfStringAccessor(StringAccessor):
     """String operations on nested/var-length data"""
 
     def decode(self, encoding: str = "utf-8"):
-        raise NotImplementedError("cudf does not support bytearray type, so we can't automatically identify them")
+        raise NotImplementedError(
+            "cudf does not support bytearray type, so we can't automatically identify them"
+        )
 
     def encode(self, encoding: str = "utf-8"):
         raise NotImplementedError("cudf does not support bytearray type")
 
 
 def dec_cu(op, match=match_string):
-
     @functools.wraps(op)
     def f(lay, **kwargs):
         # op(column, ...)->column
@@ -47,14 +60,15 @@ for meth in dir(StringMethods):
     def f(lay, method=meth, **kwargs):
         # this is different from dec_cu, because we need to instantiate StringMethods
         # before getting the method from it
-        col = getattr(StringMethods(cudf.Series(lay._to_cudf(cudf, None, len(lay)))), method)(**kwargs)
+        col = getattr(
+            StringMethods(cudf.Series(lay._to_cudf(cudf, None, len(lay)))), method
+        )(**kwargs)
         return from_cudf(col).layout
 
     setattr(CudfStringAccessor, meth, dec(func=f, match=match_string, inmode="ak"))
 
 
 class CudfDatetimeAccessor(DatetimeAccessor):
-
     ...
 
 
@@ -76,7 +90,11 @@ for meth in dir(DatetimeColumn):
         return from_cudf(cudf.Series(col)).layout
 
     if isinstance(getattr(DatetimeColumn, meth), property):
-        setattr(CudfDatetimeAccessor, meth, property(dec(func=f, match=match_t, inmode="ak")))
+        setattr(
+            CudfDatetimeAccessor,
+            meth,
+            property(dec(func=f, match=match_t, inmode="ak")),
+        )
     else:
         setattr(CudfDatetimeAccessor, meth, dec(func=f, match=match_t, inmode="ak"))
 
