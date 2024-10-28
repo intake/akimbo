@@ -7,7 +7,7 @@ from typing import Callable, Iterable
 import awkward as ak
 import pyarrow.compute as pc
 
-from akimbo.apply_tree import dec
+from akimbo.apply_tree import dec, run_with_transform
 
 methods = [
     _ for _ in (dir(ak)) if not _.startswith(("_", "ak_")) and not _[0].isupper()
@@ -331,10 +331,24 @@ class Accessor(ArithmeticMixin):
     def _create_op(cls, op):
         """Make functions to perform all the arithmetic, logical and comparison ops"""
 
+        def op2(*arg, **kwargs):
+            return op(*[ak.Array(_) for _ in arg], **kwargs).layout
+
         def run(self, *args, **kwargs):
-            ar2 = (ar.ak.array if hasattr(ar, "ak") else ar for ar in args)
-            ar3 = (ar.array if isinstance(ar, cls) else ar for ar in ar2)
-            return self.to_output(op(self.array, *ar3, **kwargs))
+            ar3 = []
+            for ar in args:
+                if hasattr(ar, "ak"):
+                    ar3.append(ar.ak.array)
+                elif isinstance(ar, cls):
+                    ar3.append(ar.array)
+                elif isinstance(ar, (ak.Array)):
+                    ar3.appen(ar)
+                else:
+                    ar3.append(ak.Array(ak.to_layout(ar)))
+            out = run_with_transform(
+                self.array, op=op2, inmode="ak", others=ar3, **kwargs
+            )
+            return self.to_output(out)
 
         return run
 
