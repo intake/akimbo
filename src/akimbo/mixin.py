@@ -348,7 +348,10 @@ class Accessor(ArithmeticMixin):
             out = run_with_transform(
                 self.array, op=op2, inmode="ak", others=ar3, **kwargs
             )
-            return self.to_output(out)
+            out = self.to_output(out)
+            if isinstance(self._obj, self.dataframe_type):
+                return out.ak.unmerge()
+            return out
 
         return run
 

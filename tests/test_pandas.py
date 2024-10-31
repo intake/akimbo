@@ -49,7 +49,7 @@ def test_ufunc():
     assert (s.ak + s.ak).tolist() == [[2, 4, 6], [8, 10], [12]]
     assert (s.ak + s).tolist() == [[2, 4, 6], [8, 10], [12]]
 
-    s = pd.DataFrame({"a": pd.Series(a)})
+    s = pd.DataFrame({"a": s})
     assert (s.ak + 1).a.tolist() == [[2, 3, 4], [5, 6], [7]]
 
     assert (s.ak + s.ak).a.tolist() == [[2, 4, 6], [8, 10], [12]]

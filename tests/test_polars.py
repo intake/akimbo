@@ -54,3 +54,7 @@ def test_ufunc():
 
     s2 = np.add(s.ak, 1)
     assert s2.to_list() == [[2, 3, 4], [], [5, 6]]
+
+    df = pl.DataFrame({"a": s})
+    df2 = df.ak + 1
+    assert df2["a"].to_list() == [[2, 3, 4], [], [5, 6]]
