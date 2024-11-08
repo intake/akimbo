@@ -93,6 +93,8 @@ def test_mixed_ufunc():
         {"a": ["blah"], "b": [12]},
     ]
     assert df2.ak.tolist() == expected
+    df2 = 2 * df.ak
+    assert df2.ak.tolist() == expected
 
     df2 = df.ak == df.ak
     expected = [[True, True, True], [True, True], [True]]
