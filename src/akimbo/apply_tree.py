@@ -8,9 +8,20 @@ import awkward as ak
 import pyarrow as pa
 
 
+def match_any(*layout, **_):
+    return True
+
+
 def leaf(*layout, **_):
     """True for the lowest elements of any akwward layout tree"""
     return layout[0].is_leaf
+
+
+def numeric(*layout, **_):
+    return layout[0].is_leaf and layout[0].parameters.get("__array__", None) not in {
+        "string",
+        "char",
+    }
 
 
 def run_with_transform(
@@ -34,11 +45,20 @@ def run_with_transform(
             elif inmode == "numpy":
                 # works on numpy/cupy contents
                 out = op(*(lay.data for lay in layout), **kw, **(match_kwargs or {}))
-            else:
+            elif inmode == "ak":
                 out = op(*layout, **kw, **(match_kwargs or {}))
-            return outtype(out) if callable(outtype) else out
+            else:
+                out = op(
+                    *(ak.Array(lay) for lay in layout), **kw, **(match_kwargs or {})
+                )
+            if callable(outtype):
+                return outtype(out)
+            elif isinstance(out, ak.Array):
+                return out.layout
+            else:
+                return out
 
-    return ak.transform(func, arr, *others)
+    return ak.transform(func, arr, *others, allow_records=True)
 
 
 def dec(

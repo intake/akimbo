@@ -7,7 +7,8 @@ from typing import Callable, Iterable
 import awkward as ak
 import pyarrow.compute as pc
 
-from akimbo.apply_tree import dec, run_with_transform
+from akimbo.apply_tree import dec, match_any, numeric, run_with_transform
+from akimbo.utils import to_ak_layout
 
 methods = [
     _ for _ in (dir(ak)) if not _.startswith(("_", "ak_")) and not _[0].isupper()
@@ -179,6 +180,9 @@ class Accessor(ArithmeticMixin):
 
         The function should take an ak array as input and produce an
         ak array or scalar.
+
+        Unlike ``transform``, the function takes and returns ak.Array instances
+        and acts on a whole schema tree.
         """
         if where:
             bits = tuple(where.split("."))
@@ -188,6 +192,44 @@ class Accessor(ArithmeticMixin):
             final = ak.with_field(arr, out, where=where)
         else:
             final = fn(self.array)
+        return self.to_output(final)
+
+    def transform(
+        self, fn: Callable, *others, where=None, match=match_any, inmode="ak", **kwargs
+    ):
+        """Perform arbitrary function to selected parts of the data tree
+
+        This process walks thought the data's schema tree, and applies the given
+        function only on the matching nodes.
+
+        Parameters
+        ----------
+        fn: the operation you want to perform. Typically unary or binary, and may take
+            extra kwargs
+        others: extra arguments, perhaps other akimbo series
+        where: path in the schema tree to apply this
+        match: when walking the schema, this determines if a node should be processed;
+            it will be a function taking one or more ak.contents classes. ak.apaply_tree
+            contains convenience matchers macth_any, leaf and numeric, and more matchers
+            can be found in the string and datetime modules
+        inmode: data should be passed to the given function as:
+            "arrow" | "numpy" (includes cupy) | "ak" layout | "array" high-level ak.Array
+        kwargs: passed to the operation, except those that are taken by ``run_with_transform``.
+        """
+        if where:
+            bits = tuple(where.split("."))
+            arr = self.array
+            part = arr.__getitem__(bits)
+            # TODO: apply ``where`` to any arrays in others
+            # other = [to_ak_layout(ar) for ar in others]
+            out = run_with_transform(
+                part, fn, match=match, others=others, inmode=inmode, **kwargs
+            )
+            final = ak.with_field(arr, out, where=where)
+        else:
+            final = run_with_transform(
+                self.array, fn, match=match, others=others, inmode=inmode, **kwargs
+            )
         return self.to_output(final)
 
     def __getitem__(self, item):
@@ -331,29 +373,31 @@ class Accessor(ArithmeticMixin):
     def _create_op(cls, op):
         """Make functions to perform all the arithmetic, logical and comparison ops"""
 
-        def op2(*arg, **kwargs):
-            return op(*[ak.Array(_) for _ in arg], **kwargs).layout
+        def op2(*args, extra=None, **kw):
+            args = list(args) + list(extra or [])
+            return op(*args, **kw)
 
-        def run(self, *args, **kwargs):
-            ar3 = []
-            for ar in args:
-                if hasattr(ar, "ak"):
-                    ar3.append(ar.ak.array)
-                elif isinstance(ar, cls):
-                    ar3.append(ar.array)
-                elif isinstance(ar, (ak.Array)):
-                    ar3.appen(ar)
-                else:
-                    ar3.append(ak.Array(ak.to_layout(ar)))
-            out = run_with_transform(
-                self.array, op=op2, inmode="ak", others=ar3, **kwargs
+        def f(self, *args, **kw):
+            # TODO: test here is for literals, but really we want "don't know how to
+            #  array that" condition
+            extra = (_ for _ in args if isinstance(_, (str, int, float)))
+            args = (
+                to_ak_layout(_) for _ in args if not isinstance(_, (str, int, float))
             )
-            out = self.to_output(out)
+            out = self.transform(
+                op2,
+                *args,
+                match=numeric,
+                inmode="numpy",
+                extra=extra,
+                outtype=ak.contents.NumpyArray,
+                **kw,
+            )
             if isinstance(self._obj, self.dataframe_type):
                 return out.ak.unmerge()
             return out
 
-        return run
+        return f
 
     def __getattr__(self, item):
         arr = self.array

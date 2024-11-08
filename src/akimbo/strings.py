@@ -53,13 +53,20 @@ methods = [
 
 # make sensible defaults for strptime
 strptime = functools.wraps(pc.strptime)(
-    lambda *args, format="%FT%T", unit="s", error_is_null=True, **kw:
-        pc.strptime(*args, format=format, unit=unit, error_is_null=error_is_null)
+    lambda *args, format="%FT%T", unit="s", error_is_null=True, **kw: pc.strptime(
+        *args, format=format, unit=unit, error_is_null=error_is_null
+    )
 )
 
 
 class StringAccessor:
     """String operations on nested/var-length data"""
+
+    # TODO: implement dunder add (concat strings) and mul (repeat strings)
+    #  - s.ak.str + "suffix" (and arguments swapped)
+    #  - s.ak.str + s2.ak.str (with matching schemas)
+    #  - s.ak.str * N (and arguments swapped)
+    #  - s.ak.str * s (where each string maps to integers for variable repeats)
 
     def __init__(self, accessor):
         self.accessor = accessor

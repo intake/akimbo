@@ -56,6 +56,49 @@ def test_ufunc():
     assert (s.ak + s).a.tolist() == [[2, 4, 6], [8, 10], [12]]
 
 
+def test_manual_ufunc():
+    from akimbo.apply_tree import numeric
+
+    df = pd.DataFrame(
+        {"a": [["hey", "hi", "ho"], [None], ["blah"]], "b": [[1, 2, 3], [4, 5], [6]]}
+    )
+    df2 = df.ak.transform(
+        lambda x: x + 1, match=numeric, inmode="numpy", outtype=ak.contents.NumpyArray
+    )
+    expected = [
+        {"a": ["hey", "hi", "ho"], "b": [2, 3, 4]},
+        {"a": [None], "b": [5, 6]},
+        {"a": ["blah"], "b": [7]},
+    ]
+    assert df2.tolist() == expected
+
+
+def test_mixed_ufunc():
+    # ufuncs are numeric only by default, doesn't touch strings
+    df = pd.DataFrame(
+        {"a": [["hey", "hi", "ho"], [None], ["blah"]], "b": [[1, 2, 3], [4, 5], [6]]}
+    )
+    df2 = df.ak + 1
+    expected = [
+        {"a": ["hey", "hi", "ho"], "b": [2, 3, 4]},
+        {"a": [None], "b": [5, 6]},
+        {"a": ["blah"], "b": [7]},
+    ]
+    assert df2.ak.tolist() == expected
+
+    df2 = df.ak * 2
+    expected = [
+        {"a": ["hey", "hi", "ho"], "b": [2, 4, 6]},
+        {"a": [None], "b": [8, 10]},
+        {"a": ["blah"], "b": [12]},
+    ]
+    assert df2.ak.tolist() == expected
+
+    df2 = df.ak == df.ak
+    expected = [[True, True, True], [True, True], [True]]
+    assert df2["b"].tolist() == expected
+
+
 def test_to_autoarrow():
     a = [[1, 2, 3], [4, 5], [6]]
     s = pd.Series(a)
