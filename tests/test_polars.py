@@ -28,16 +28,16 @@ def test_apply_where():
     assert s2[0] == {"a": [-1, -2, -3], "b": [1, 2, 3]}
 
 
-def test_merge_unmerge():
+def test_pack_unpack():
     data = [
         {"a": [1, 2, 3], "b": [1, 2, 3]},
         {"a": [1, 2, 3], "b": [1, 2, 3]},
         {"a": [1, 2, 3], "b": [1, 2, 3]},
     ]
     s = pl.Series(data)
-    df = s.ak.unmerge()
+    df = s.ak.unpack()
     assert df["a"].to_list() == [[1, 2, 3]] * 3
-    s2 = df.ak.merge()
+    s2 = df.ak.pack()
     assert s.to_list() == s2.to_list()
 
 

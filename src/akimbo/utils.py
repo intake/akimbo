@@ -40,3 +40,12 @@ def to_ak_layout(ar):
 
 def match_string(*layout):
     return layout[0].is_list and layout[0].parameter("__array__") == "string"
+
+
+def rec_list_swap(arr: ak.Array, field: str | None = None) -> ak.Array:
+    """Make a record-of-lists into a list-of-records, assuming the lists have the same lengths"""
+    record_of_lists = arr[field] if field else arr
+    list_of_records = ak.zip(
+        dict(zip(ak.fields(record_of_lists), ak.unzip(record_of_lists))), depth_limit=2
+    )
+    return ak.with_field(arr, list_of_records, field) if field else list_of_records

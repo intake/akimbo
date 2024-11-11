@@ -1,4 +1,3 @@
-import awkward as ak
 import polars as pl
 
 from akimbo.mixin import Accessor
@@ -13,8 +12,8 @@ class PolarsAwkwardAccessor(Accessor):
     dataframe_type = pl.DataFrame
 
     @classmethod
-    def _to_output(cls, arr):
-        return pl.from_arrow(ak.to_arrow(arr, extensionarray=False))
+    def _arrow_to_series(cls, arr):
+        return pl.from_arrow(arr)
 
     @classmethod
     def to_arrow(cls, data):
