@@ -99,6 +99,7 @@ def test_mixed_ufunc():
     df2 = df.ak == df.ak
     expected = [[True, True, True], [True, True], [True]]
     assert df2["b"].tolist() == expected
+    assert df2["a"].tolist() == df["a"].tolist()
 
 
 def test_to_autoarrow():

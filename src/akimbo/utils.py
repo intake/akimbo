@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import awkward as ak
 
 
@@ -34,3 +36,7 @@ def to_ak_layout(ar):
         return ar
     else:
         return ak.Array(ak.to_layout(ar))
+
+
+def match_string(*layout):
+    return layout[0].is_list and layout[0].parameter("__array__") == "string"

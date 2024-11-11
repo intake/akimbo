@@ -35,6 +35,8 @@ def run_with_transform(
     **kw,
 ) -> ak.Array:
     def func(layout, **kwargs):
+        from akimbo.utils import match_string
+
         if not isinstance(layout, tuple):
             layout = (layout,)
         if all(match(lay, **(match_kwargs or {})) for lay in layout):
@@ -57,6 +59,9 @@ def run_with_transform(
                 return out.layout
             else:
                 return out
+        if match_string(*layout):
+            # non-string op may fail to descend into string
+            return layout[0]
 
     return ak.transform(func, arr, *others, allow_records=True)
 

@@ -8,10 +8,7 @@ import pyarrow.compute as pc
 
 from akimbo.apply_tree import dec
 from akimbo.mixin import Accessor
-
-
-def match_string(*layout):
-    return layout[0].is_list and layout[0].parameter("__array__") == "string"
+from akimbo.utils import match_string
 
 
 def _encode(layout):
