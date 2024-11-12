@@ -18,3 +18,7 @@ class PolarsAwkwardAccessor(Accessor):
     @classmethod
     def to_arrow(cls, data):
         return data.to_arrow()
+
+    def pack(self):
+        # polars already implements this directly
+        return self._obj.to_struct()

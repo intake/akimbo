@@ -334,19 +334,33 @@ class Accessor(ArithmeticMixin):
 
     def unpack(self):
         """Make dataframe out of a series of record type"""
+        # TODO: what to do when passed a dataframe, partial unpack of record fields?
         arr = self.array
         if not arr.fields:
             raise ValueError("Not array-of-records")
-        # TODO: partial unpack when (some) fields are records
         out = {k: self.to_output(arr[k]) for k in arr.fields}
         return self.dataframe_type(out)
 
-    def group_lists(self, *cols, outname="grouped"):
+    def unexplode(self, *cols, outname="grouped"):
+        """Repack "exploded" form dataframes into lists of structs
+
+        This is the inverse of the regular dataframe explode() process.
+        """
         # TODO: this does not work on cuDF as here we use arrow directly
+        # TODO: pandas indexes are pre-grouped cat-like structures
         cols = list(cols)
-        outcols = [(_, "list") for _ in self.arrow.column_names if _ not in cols]
+        arr = self.arrow
+        if set(cols) - set(arr.column_names):
+            raise ValueError(
+                "One or more rouping column (%s) not in available columns %s",
+                cols,
+                arr.column_names,
+            )
+        outcols = [(_, "list") for _ in arr.column_names if _ not in cols]
+        if not outcols:
+            raise ValueError("Cannot group on all available columns")
         outcols2 = [f"{_[0]}_list" for _ in outcols]
-        grouped = self.arrow.group_by(cols).aggregate(outcols)
+        grouped = arr.group_by(cols).aggregate(outcols)
         akarr = ak.from_arrow(grouped)
         akarr2 = akarr[outcols2]
         akarr2.layout._fields = [_[0] for _ in outcols]

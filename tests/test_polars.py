@@ -58,3 +58,42 @@ def test_ufunc():
     df = pl.DataFrame({"a": s})
     df2 = df.ak + 1
     assert df2["a"].to_list() == [[2, 3, 4], [], [5, 6]]
+
+
+def test_unexplode():
+    df = pl.DataFrame(
+        {
+            "x": [1, 1, 1, 2, 1, 3, 3, 1],
+            "y": [1, 1, 1, 2, 1, 3, 3, 1],
+            "z": [1, 1, 1, 2, 1, 3, 3, 2],
+        }
+    )
+    out = df.ak.unexplode("x")
+    compact = out["grouped"].to_list()
+    expected = [
+        [
+            {"y": 1, "z": 1},
+            {"y": 1, "z": 1},
+            {"y": 1, "z": 1},
+            {"y": 1, "z": 1},
+            {"y": 1, "z": 2},
+        ],
+        [{"y": 2, "z": 2}],
+        [{"y": 3, "z": 3}, {"y": 3, "z": 3}],
+    ]
+    assert compact == expected
+
+    out = df.ak.unexplode("x", "y")
+    compact = out["grouped"].to_list()
+    expected = [
+        [{"z": 1}, {"z": 1}, {"z": 1}, {"z": 1}, {"z": 2}],
+        [{"z": 2}],
+        [{"z": 3}, {"z": 3}],
+    ]
+    assert compact == expected
+
+    with pytest.raises(ValueError):
+        df.ak.unexplode("x", "y", "z")
+
+    with pytest.raises(ValueError):
+        df.ak.unexplode("unknown")
