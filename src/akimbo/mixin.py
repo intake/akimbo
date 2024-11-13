@@ -8,14 +8,14 @@ import awkward as ak
 import pyarrow.compute as pc
 
 from akimbo.apply_tree import dec, match_any, numeric, run_with_transform
-from akimbo.utils import to_ak_layout
+from akimbo.utils import rec_list_swap, to_ak_layout
 
 methods = [
     _ for _ in (dir(ak)) if not _.startswith(("_", "ak_")) and not _[0].isupper()
 ] + ["apply", "array", "explode", "dt", "str"]
 
-df_methods = sorted(methods + ["merge"])
-series_methods = sorted(methods + ["unmerge"])
+df_methods = sorted(methods + ["pack"])
+series_methods = sorted(methods + ["unpack"])
 
 
 def radd(left, right):
@@ -165,11 +165,19 @@ class Accessor(ArithmeticMixin):
         return isinstance(data, cls.dataframe_type)
 
     @classmethod
-    def _to_output(cls, data):
-        # TODO: clarify protocol here; can data be in arrow already?
+    def _arrow_to_series(cls, data):
+        """How to make a series from arrow data"""
         raise NotImplementedError
 
+    @classmethod
+    def _to_output(cls, data):
+        """How to make a series from ak or arrow"""
+        if isinstance(data, ak.Array):
+            data = ak.to_arrow(data, extensionarray=False)
+        return cls._arrow_to_series(data)
+
     def to_output(self, data=None):
+        """Data returned as a series"""
         data = data if data is not None else self.array
         if not isinstance(data, Iterable):
             return data
@@ -313,25 +321,53 @@ class Accessor(ArithmeticMixin):
         parent.fields[this] = to
         return self.to_output(ak.Array(lay))
 
-    def merge(self):
+    def pack(self):
         """Make a single complex series out of the columns of a dataframe"""
         if not self.is_dataframe(self._obj):
-            raise ValueError("Can only merge on a dataframe")
+            raise ValueError("Can only pack on a dataframe")
         out = {}
         for k in self._obj.columns:
-            # TODO: partial merge when column names are like "record.field"
+            # TODO: partial pack when column names are like "record.field"
             out[k] = self._obj[k].ak.array
         arr = ak.Array(out)
         return self.to_output(arr)
 
-    def unmerge(self):
+    def unpack(self):
         """Make dataframe out of a series of record type"""
+        # TODO: what to do when passed a dataframe, partial unpack of record fields?
         arr = self.array
         if not arr.fields:
             raise ValueError("Not array-of-records")
-        # TODO: partial unmerge when (some) fields are records
         out = {k: self.to_output(arr[k]) for k in arr.fields}
         return self.dataframe_type(out)
+
+    def unexplode(self, *cols, outname="grouped"):
+        """Repack "exploded" form dataframes into lists of structs
+
+        This is the inverse of the regular dataframe explode() process.
+        """
+        # TODO: this does not work on cuDF as here we use arrow directly
+        # TODO: pandas indexes are pre-grouped cat-like structures
+        cols = list(cols)
+        arr = self.arrow
+        if set(cols) - set(arr.column_names):
+            raise ValueError(
+                "One or more rouping column (%s) not in available columns %s",
+                cols,
+                arr.column_names,
+            )
+        outcols = [(_, "list") for _ in arr.column_names if _ not in cols]
+        if not outcols:
+            raise ValueError("Cannot group on all available columns")
+        outcols2 = [f"{_[0]}_list" for _ in outcols]
+        grouped = arr.group_by(cols).aggregate(outcols)
+        akarr = ak.from_arrow(grouped)
+        akarr2 = akarr[outcols2]
+        akarr2.layout._fields = [_[0] for _ in outcols]
+        struct = rec_list_swap(akarr2)
+        final = ak.with_field(akarr[cols], struct, outname)
+
+        return self._to_output(final).ak.unpack()
 
     def join(
         self,
@@ -394,7 +430,7 @@ class Accessor(ArithmeticMixin):
                 **kw,
             )
             if isinstance(self._obj, self.dataframe_type):
-                return out.ak.unmerge()
+                return out.ak.unpack()
             return out
 
         return f

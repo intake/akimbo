@@ -122,3 +122,42 @@ def test_rename():
 
     s2 = s.ak.rename(("a", "b", "c"), "d")
     assert s2.tolist() == [{"a": [{"b": {"d": 0}}] * 2}] * 3
+
+
+def test_unexplode():
+    df = pd.DataFrame(
+        {
+            "x": [1, 1, 1, 2, 1, 3, 3, 1],
+            "y": [1, 1, 1, 2, 1, 3, 3, 1],
+            "z": [1, 1, 1, 2, 1, 3, 3, 2],
+        }
+    )
+    out = df.ak.unexplode("x")
+    compact = out["grouped"].tolist()
+    expected = [
+        [
+            {"y": 1, "z": 1},
+            {"y": 1, "z": 1},
+            {"y": 1, "z": 1},
+            {"y": 1, "z": 1},
+            {"y": 1, "z": 2},
+        ],
+        [{"y": 2, "z": 2}],
+        [{"y": 3, "z": 3}, {"y": 3, "z": 3}],
+    ]
+    assert compact == expected
+
+    out = df.ak.unexplode("x", "y")
+    compact = out["grouped"].tolist()
+    expected = [
+        [{"z": 1}, {"z": 1}, {"z": 1}, {"z": 1}, {"z": 2}],
+        [{"z": 2}],
+        [{"z": 3}, {"z": 3}],
+    ]
+    assert compact == expected
+
+    with pytest.raises(ValueError):
+        df.ak.unexplode("x", "y", "z")
+
+    with pytest.raises(ValueError):
+        df.ak.unexplode("unknown")
