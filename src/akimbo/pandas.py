@@ -35,10 +35,8 @@ class PandasAwkwardAccessor(Accessor):
         return pa.table(data)
 
     @classmethod
-    def _to_output(cls, data):
-        return pd.Series(
-            pd.arrays.ArrowExtensionArray(ak.to_arrow(data, extensionarray=False))
-        )
+    def _arrow_to_series(cls, data):
+        return pd.Series(pd.arrays.ArrowExtensionArray(data))
 
     def to_output(self, data=None):
         # override to apply index
