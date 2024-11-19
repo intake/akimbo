@@ -26,7 +26,7 @@ def ak_to_series(ds, backend="pandas", extract=True):
     else:
         raise ValueError("Backend must be in {'pandas', 'polars', 'dask'}")
     if extract and ds.fields:
-        return s.ak.unmerge()
+        return s.ak.unpack()
     return s
 
 
