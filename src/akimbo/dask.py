@@ -1,5 +1,5 @@
 import functools
-from typing import Iterable
+from typing import Callable, Iterable
 
 import awkward as ak
 import dask.dataframe as dd
@@ -85,6 +85,18 @@ class DaskAwkwardAccessor(AkAccessor):
 
         return run
 
+    def __getitem__(self, item):
+        def getter(x):
+            return x.ak.__getitem__(item)
+
+        return self._obj.map_partitions(getter, meta=getter(self._obj._meta))
+
+    def apply(self, fn: Callable, where=None, **kwargs):
+        def applier(x):
+            return x.ak.apply(fn, where=where, **kwargs)
+
+        return self._obj.map_partitions(applier, meta=applier(self._obj._meta))
+
     def __getattr__(self, item):
         if item not in dir(self):
             raise AttributeError
@@ -101,7 +113,7 @@ class DaskAwkwardAccessor(AkAccessor):
                     # data and others are pandas objects here
                     return getattr(data.ak, item)(*others, **kwargs)
 
-                return self._obj.map_partitions(func2, meta=func(orig))
+                return self._obj.map_partitions(func2, meta=func2(orig))
 
         else:
             raise AttributeError(item)
