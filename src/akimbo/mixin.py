@@ -193,7 +193,7 @@ class Accessor(ArithmeticMixin):
         and acts on a whole schema tree.
         """
         if where:
-            bits = tuple(where.split("."))
+            bits = tuple(where.split(".")) if isinstance(where, str) else where
             arr = self.array
             part = arr.__getitem__(bits)
             out = fn(part, **kwargs)
@@ -225,7 +225,7 @@ class Accessor(ArithmeticMixin):
         kwargs: passed to the operation, except those that are taken by ``run_with_transform``.
         """
         if where:
-            bits = tuple(where.split("."))
+            bits = tuple(where.split(".")) if isinstance(where, str) else where
             arr = self.array
             part = arr.__getitem__(bits)
             # TODO: apply ``where`` to any arrays in others
