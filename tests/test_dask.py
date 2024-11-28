@@ -13,7 +13,7 @@ def test_simple_map():
     df = pd.DataFrame({"s": s})
     ddf = dd.from_pandas(df, 2)
     out = ddf.s.ak.count(axis=0)
-    assert out.dtype == "int64"
+    assert "int64" in str(out.dtype)
     result = out.compute(scheduler="sync")
     assert set(result) == {1, 2}
 
@@ -31,6 +31,16 @@ def test_accessor():
 
     out = ddf.s.ak.count(axis=1).compute()
     assert out.tolist() == [1, 2, 1, 2]
+
+
+def test_select():
+    data = pd.arrays.ArrowExtensionArray(pa.array([[0], [0, 1]] * 2))
+    s = pd.Series(data)
+    df = pd.DataFrame({"s": s})
+    ddf = dd.from_pandas(df, 2)
+    s = ddf.ak["s"]
+    s2 = ddf["s"]
+    assert s.compute().tolist() == s2.compute().tolist()
 
 
 def test_to_dak():
