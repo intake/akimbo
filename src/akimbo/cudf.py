@@ -118,7 +118,12 @@ class CudfAwkwardAccessor(Accessor):
 
     @classmethod
     def to_array(cls, data) -> ak.Array:
-        return from_cudf(data)
+        if isinstance(data, cls.series_type):
+            return from_cudf(data)
+        out = {}
+        for col in data.columns:
+            out[col] = from_cudf(data[col])
+        return ak.Array(out)
 
     @property
     def array(self) -> ak.Array:
@@ -151,3 +156,4 @@ def ak_property(self):
 
 
 Series.ak = ak_property  # no official register function?
+DataFrame.ak = ak_property  # no official register function?

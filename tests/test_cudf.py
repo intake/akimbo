@@ -93,3 +93,10 @@ def test_times():
     s = akimbo.io.ak_to_series(arr, "cudf")
     s2 = s.ak.dt.second
     assert s2.ak.to_list() == [[[0, 1, None, 2]], [], [[0, 1, None, 2]]]
+
+
+def test_dataframe():
+    df = cudf.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
+    arr = df.ak.array
+    assert ak.backend(arr) == "cuda"
+    assert arr.fields == ["a", "b"]
