@@ -47,7 +47,9 @@ def dec_cu(op, match=match_string):
     def f(lay, **kwargs):
         # op(column, ...)->column
         col = op(lay._to_cudf(cudf, None, len(lay)), **kwargs)
-        return from_cudf(cudf.Series._from_column(col)).layout
+        if hasattr(cudf.Series, "_from_column"):
+            return from_cudf(cudf.Series._from_column(col)).layout
+        return from_cudf(cudf.Series(col)).layout
 
     return dec(func=f, match=match, inmode="ak")
 
@@ -60,9 +62,11 @@ for meth in dir(StringMethods):
     def f(lay, method=meth, **kwargs):
         # this is different from dec_cu, because we need to instantiate StringMethods
         # before getting the method from it
-        col = getattr(
-            StringMethods(cudf.Series._from_column(lay._to_cudf(cudf, None, len(lay)))), method
-        )(**kwargs)
+        if hasattr(cudf.Series, "_from_column"):
+            ser = cudf.Series._from_column(lay._to_cudf(cudf, None, len(lay)))
+        else:
+            ser = cudf.Series(lay._to_cudf(cudf, None, len(lay)))
+        col = getattr(StringMethods(ser), method)(**kwargs)
         return from_cudf(col).layout
 
     setattr(CudfStringAccessor, meth, dec(func=f, match=match_string, inmode="ak"))
@@ -87,7 +91,9 @@ for meth in dir(DatetimeColumn):
         else:
             # attributes giving components
             col = m
-        return from_cudf(cudf.Series._from_column(col)).layout
+        if hasattr(cudf.Series, "_from_column"):
+            return from_cudf(cudf.Series._from_column(col)).layout
+        return from_cudf(cudf.Series(col)).layout
 
     if isinstance(getattr(DatetimeColumn, meth), property):
         setattr(
