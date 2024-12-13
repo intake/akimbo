@@ -2,6 +2,7 @@ import functools
 from typing import Callable
 
 import awkward as ak
+import numpy as np
 
 from akimbo.utils import NoAttributes
 
@@ -141,7 +142,13 @@ class CudfAwkwardAccessor(Accessor):
         # need to find string ops within cudf
         return CudfStringAccessor(self)
 
-    cast = dec_cu(libcudf.unary.cast, match=leaf)
+    try:
+        cast = dec_cu(libcudf.unary.cast, match=leaf)
+    except AttributeError:
+        def cast_inner(col, dtype):
+            return cudf.core.column.ColumnBase(col.data, size=len(col), dtype=np.dtype(dtype),
+                                               mask=None, offset=0, children=())
+        cast = dec_cu(cast_inner, match=leaf)
 
     @property
     def dt(self):
