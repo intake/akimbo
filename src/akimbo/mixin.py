@@ -409,24 +409,9 @@ class Accessor(ArithmeticMixin):
     def _create_op(cls, op):
         """Make functions to perform all the arithmetic, logical and comparison ops"""
 
-        def op2(*arg, **kwargs):
-            return op(*[ak.Array(_) for _ in arg], **kwargs).layout
-
-        def run(self, *args, **kwargs):
-            ar3 = []
-            for ar in args:
-                if hasattr(ar, "ak"):
-                    ar3.append(ar.ak.array)
-                elif isinstance(ar, cls):
-                    ar3.append(ar.array)
-                elif isinstance(ar, (ak.Array)):
-                    ar3.appen(ar)
-                else:
-                    ar3.append(ak.Array(ak.to_layout(ar)))
-            out = run_with_transform(
-                self.array, op=op2, inmode="ak", others=ar3, **kwargs
-            )
-            return self.to_output(out)
+        def op2(*args, extra=None, **kw):
+            args = list(args) + list(extra or [])
+            return op(*args, **kw)
 
         def f(self, *args, **kw):
             # TODO: test here is for literals, but really we want "don't know how to
