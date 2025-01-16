@@ -145,9 +145,17 @@ class CudfAwkwardAccessor(Accessor):
     try:
         cast = dec_cu(libcudf.unary.cast, match=leaf)
     except AttributeError:
+
         def cast_inner(col, dtype):
-            return cudf.core.column.ColumnBase(col.data, size=len(col), dtype=np.dtype(dtype),
-                                               mask=None, offset=0, children=())
+            return cudf.core.column.ColumnBase(
+                col.data,
+                size=len(col),
+                dtype=np.dtype(dtype),
+                mask=None,
+                offset=0,
+                children=(),
+            )
+
         cast = dec_cu(cast_inner, match=leaf)
 
     @property
