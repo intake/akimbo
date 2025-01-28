@@ -1,27 +1,263 @@
 from typing import Iterable
 
+import awkward as ak
+import numpy as np
+import pyarrow as pa
 import pyspark
-from pyspark.sql.functions import pandas_udf
+from pyspark.sql.pandas.types import from_arrow_schema, to_arrow_schema
 
-from akimbo.mixin import Accessor
+from akimbo.apply_tree import run_with_transform
+from akimbo.mixin import Accessor, match_any, numeric
 from akimbo.pandas import pd
+from akimbo.strings import StringAccessor
+from akimbo.utils import to_ak_layout
 
-# https://docs.databricks.com/en/udf/pandas.html
+sdf = pyspark.sql.DataFrame
+
+
+class SparkStringAccessor(StringAccessor):
+    def __getattr__(self, attr: str) -> callable:
+        attr = self.method_name(attr)
+        return getattr(ak.str, attr)
 
 
 class SparkAccessor(Accessor):
+    dataframe_type = sdf
+
+    def __init__(self, obj, subaccessor=None, behavior=None):
+        super().__init__(obj, behavior)
+        self.subaccessor = subaccessor
+        # ugly way to override
+        self.subaccessors = Accessor.subaccessors.copy()
+        self.subaccessors["str"] = SparkStringAccessor(self)
+
     def __dir__(self) -> Iterable[str]:
         return dir(pd.DataFrame.ak)
 
-    def __getattr__(self, item):
-        @pandas_udf(returnType=pyspark.sql.types.BooleanType())
-        def run(x: pd.Series) -> pd.Series:
-            from akimbo.pandas import pd  # noqa
+    def to_arrow(self, data) -> pa.Table:
+        # collects data locally
+        batches = data._collect_as_arrow()
+        return pa.Table.from_batches(batches)
 
-            out = x.ak.is_none()
-            return out
+    def to_output(self, data=None) -> pd.DataFrame | pd.Series:
+        # data is always arrow format internally
+        data = self.to_arrow(data if data is not None else self._obj).to_pandas(
+            types_mapper=pd.ArrowDtype
+        )
+        if list(data.columns) == ["_ak_series_"]:
+            data = data["_ak_series_"]
+        return data
 
-        return self._obj.select(run("x"))
+    def __getattr__(self, item: str) -> sdf:
+        if item in self.subaccessors:
+            return SparkAccessor(self._obj, subaccessor=item, behavior=self._behavior)
+
+        def select(*inargs, subaccessor=self.subaccessor, **kwargs):
+            if subaccessor:
+                func0 = getattr(self.subaccessors[subaccessor], item)
+            elif callable(item):
+                func0 = item
+            else:
+                func0 = None
+
+            def f(batches):
+                for batch in batches:
+                    arr = ak.from_arrow(batch)
+                    if any(isinstance(_, str) and _ == "_ak_other_" for _ in inargs):
+                        # binary input
+                        arr, other = arr["_1"], arr["_df2"]
+                        if other.fields == ["_ak_series_"]:
+                            other = other["_ak_series_"]
+                        inargs0 = [
+                            other if str(_) == "_ak_other_" else _ for _ in inargs
+                        ]
+                    else:
+                        inargs0 = inargs
+                        other = None
+                    if arr.fields == ["_ak_series_"]:
+                        arr = arr["_ak_series_"]
+
+                    if callable(func0):
+                        func = func0
+                        args = (arr,)
+                    elif hasattr(arr, item) and callable(getattr(arr, item)):
+                        func = getattr(arr, item)
+                        args = ()
+                    elif subaccessor:
+                        func = func0
+                        args = (arr,)
+                    elif hasattr(ak, item):
+                        func = getattr(ak, item)
+                        args = (arr,)
+
+                    out = func(*args, *inargs0, **kwargs)
+                    if not out.layout.is_record:
+                        out = ak.Array({"_ak_series_": out})
+                    arrout = ak.to_arrow(
+                        out,
+                        extensionarray=False,
+                        list_to32=True,
+                        string_to32=True,
+                        bytestring_to32=True,
+                    )
+                    yield pa.RecordBatch.from_struct_array(arrout)
+
+            f.__name__ = item.__name__ if callable(item) else item
+
+            inargs = [_._obj if isinstance(_, type(self)) else _ for _ in inargs]
+            n_others = sum(isinstance(_, self.dataframe_type) for _ in inargs)
+            if n_others == 1:
+                other = next(_ for _ in inargs if isinstance(_, self.dataframe_type))
+                inargs = [
+                    "_ak_other_" if isinstance(_, self.dataframe_type) else _
+                    for _ in inargs
+                ]
+                obj = concat_columns_zip_index(self._obj, other)
+            elif n_others > 1:
+                raise NotImplementedError
+            else:
+                obj = self._obj
+            arrow_type = to_arrow_schema(obj.schema)
+            arr = pa.table([[]] * len(arrow_type), schema=arrow_type)
+            out1 = next(f([arr]))
+            out_schema = pa.table(out1).schema
+            return obj.mapInArrow(f, schema=from_arrow_schema(out_schema))
+
+        return select
+
+    def __array_ufunc__(self, *args, where=None, out=None, **kwargs):
+        # includes operator overload like df.ak + 1
+        ufunc, call, inputs, *callargs = args
+        if out is not None or call != "__call__":
+            raise NotImplementedError
+        # if where:
+        #     # called like np.add(df.ak, 1, where="...")
+        #     bits = tuple(where.split(".")) if isinstance(where, str) else where
+        #     arr = self.array
+        #     part = arr.__getitem__(bits)
+        #     callargs = (
+        #         _ if isinstance(_, (str, int, float, np.number)) else to_ak_layout(_).__getitem__(bits)
+        #         for _ in callargs
+        #     )
+        #     callkwargs = {
+        #         k: _ if isinstance(_, (str, int, float, np.number)) else to_ak_layout(_).__getitem__(bits)
+        #         for k, _ in kwargs.items()
+        #     }
+        #
+        #     out = self.to_output(ufunc(part, *callargs, **kwargs))
+        #     return self.to_output(ak.with_field(arr, out, where=where))
+
+        return self.__getattr__(ufunc)(*callargs, **kwargs)
+
+    def __getitem__(self, item) -> sdf:
+        def f(batches):
+            import akimbo.pandas  # noqa
+
+            for batch in batches:
+                df = batch.to_pandas(types_mapper=pd.ArrowDtype)
+                arr = df.ak.array
+                arr2 = arr.__getitem__(item)
+                if not arr2.layout.is_record:
+                    arr2 = ak.Array({"_ak_series_": arr2})
+                out = ak.to_arrow(
+                    arr2,
+                    extensionarray=False,
+                    list_to32=True,
+                    string_to32=True,
+                    bytestring_to32=True,
+                )
+                yield pa.RecordBatch.from_struct_array(out)
+
+        arrow_type = to_arrow_schema(self._obj.schema)
+        arr = pa.table([[]] * len(arrow_type), schema=arrow_type)
+        out1 = next(f([arr]))
+        out_schema = pa.table(out1).schema
+        return self._obj.mapInArrow(f, schema=from_arrow_schema(out_schema))
+
+    def transform(
+        self,
+        fn: callable,
+        *others,
+        where=None,
+        match=match_any,
+        inmode="array",
+        **kwargs,
+    ):
+        def f(arr, *others, **kwargs):
+            return run_with_transform(
+                arr, fn, match=match, others=others, inmode=inmode, **kwargs
+            )
+
+        return self.__getattr__(f)(*others, **kwargs)
+
+    @classmethod
+    def _create_op(cls, op):
+        def run(self, *args, **kwargs):
+            args = [
+                to_ak_layout(_) if isinstance(_, (str, int, float, np.number)) else _
+                for _ in args
+            ]
+            return self.transform(op, *args, match=numeric)
+
+        return run
+
+
+# from pyspark.sql.types import StructType, StructField, LongType
+#
+#
+# def concat_columns(df1: sdf, df2: sdf) -> sdf:
+#     """Add two DataFrames' columns into a single DF.
+#
+#     Allows dask-like binary operations between unrelated frames, when the zip version
+#     doesn't work. This is slow and requires a pre-compute.
+#     """
+#     def with_column_index(df):
+#         new_schema = StructType(df.schema.fields + [StructField("ColumnIndex", LongType(), False),])
+#         return df.rdd.zipWithIndex().map(lambda row: row[0] + (row[1],)).toDF(schema=new_schema)
+#
+#     df1_ci = with_column_index(df1)
+#     df2_ci = with_column_index(df2)  # rename columns first
+#     join_on_index = df1_ci.join(df2_ci, df1_ci.ColumnIndex == df2_ci.ColumnIndex, 'inner').drop("ColumnIndex")
+#     return join_on_index
+#
+#
+# def concat_columns_zip(df1: sdf, df2: sdf) -> sdf:
+#     """Add two DataFrames' columns into a single DF.
+#
+#     Allows dask-like binary operations between unrelated frames. Requires they have the same
+#     number of partitions and number of rows per partition, dask-style. This is also
+#     slow, as it maps a python func over ll rows, but faster than non-zip version.
+#     """
+#     combined = df1.rdd.zip(df2.rdd).flatMap(
+#         lambda x: pyspark.sql.types.Row(list(x[0]) + list(x[1]))
+#     )
+#     combinedschema =  StructType(df1.schema.fields + df2.schema.fields)
+#     finalDF = df1._session.createDataFrame(combined, combinedschema)
+#     return finalDF
+#
+#
+# def concat_columns_join(df1: sdf, df2: sdf) -> sdf:
+#     """Merges dataframes in a single partition"""
+#     from pyspark.sql.functions import monotonically_increasing_id, row_number
+#     win = pyspark.sql.window.Window().orderBy("MonotonicIndex")
+#     df1_mon = df1.withColumn("MonotonicIndex", monotonically_increasing_id())
+#     df1_ind = df1_mon.withColumn("JoinConcatIndex", row_number().over(win))
+#     df2_mon = df2.withColumn("MonotonicIndex", monotonically_increasing_id())
+#     df2_ind = df2_mon.withColumn("JoinConcatIndex", row_number().over(win))
+#     return df1_ind.join(df2_ind, "JoinConcatIndex", "left").drop("JoinConcatIndex", "MonotonicIndex")
+
+
+def concat_columns_zip_index(df1: sdf, df2: sdf) -> sdf:
+    """Add two DataFrames' columns into a single DF.
+
+    The is SQL-tricky, but at least it requires no python map/iteration!
+    """
+    if df1.rdd.getNumPartitions() != df2.rdd.getNumPartitions():
+        # warn that this causes shuffle
+        pass
+    df1_ind = df1.rdd.zipWithIndex().toDF()
+    df2_ind = df2.rdd.zipWithIndex().toDF().withColumnRenamed("_1", "_df2")
+    return df1_ind.join(df2_ind, "_2", "left").sort("_2").drop("_2")
 
 
 @property  # type:ignore
@@ -29,4 +265,4 @@ def ak_property(self):
     return SparkAccessor(self)
 
 
-pyspark.sql.DataFrame.ak = ak_property
+pyspark.sql.DataFrame.ak = ak_property  # spark has no Series

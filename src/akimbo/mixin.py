@@ -5,6 +5,7 @@ import operator
 from typing import Callable, Iterable
 
 import awkward as ak
+import numpy as np
 import pyarrow.compute as pc
 
 from akimbo.apply_tree import dec, match_any, numeric, run_with_transform
@@ -78,14 +79,6 @@ class AbstractMethodError(NotImplementedError):
 
 
 class ArithmeticMixin:
-    @classmethod
-    def _create_op(cls, op):
-        raise AbstractMethodError(cls)
-
-    @classmethod
-    def _create_op(cls, op):
-        raise AbstractMethodError(cls)
-
     @classmethod
     def _create_op(cls, op):
         raise AbstractMethodError(cls)
@@ -228,10 +221,20 @@ class Accessor(ArithmeticMixin):
             bits = tuple(where.split(".")) if isinstance(where, str) else where
             arr = self.array
             part = arr.__getitem__(bits)
-            # TODO: apply ``where`` to any arrays in others
-            # other = [to_ak_layout(ar) for ar in others]
+            others = (
+                _
+                if isinstance(_, (str, int, float, np.number))
+                else to_ak_layout(_).__getitem__(bits)
+                for _ in others
+            )
+            callkwargs = {
+                k: _
+                if isinstance(_, (str, int, float, np.number))
+                else to_ak_layout(_).__getitem__(bits)
+                for k, _ in kwargs.items()
+            }
             out = run_with_transform(
-                part, fn, match=match, others=others, inmode=inmode, **kwargs
+                part, fn, match=match, others=others, inmode=inmode, **callkwargs
             )
             final = ak.with_field(arr, out, where=where)
         else:
@@ -270,10 +273,33 @@ class Accessor(ArithmeticMixin):
     def __array_function__(self, *args, **kwargs):
         return self.array.__array_function__(*args, **kwargs)
 
-    def __array_ufunc__(self, *args, **kwargs):
-        if args[1] == "__call__":
-            return self.to_output(args[0](self.array, *args[3:], **kwargs))
-        raise NotImplementedError
+    def __array_ufunc__(self, *args, where=None, out=None, **kwargs):
+        # includes operator overload like df.ak + 1
+        ufunc, call, inputs, *callargs = args
+        if out is not None or call != "__call__":
+            raise NotImplementedError
+        if where:
+            # called like np.add(df.ak, 1, where="...")
+            bits = tuple(where.split(".")) if isinstance(where, str) else where
+            arr = self.array
+            part = arr.__getitem__(bits)
+            callargs = (
+                _
+                if isinstance(_, (str, int, float, np.number))
+                else to_ak_layout(_).__getitem__(bits)
+                for _ in callargs
+            )
+            callkwargs = {
+                k: _
+                if isinstance(_, (str, int, float, np.number))
+                else to_ak_layout(_).__getitem__(bits)
+                for k, _ in kwargs.items()
+            }
+
+            out = self.to_output(ufunc(part, *callargs, **callkwargs))
+            return self.to_output(ak.with_field(arr, out, where=where))
+
+        return self.to_output(ufunc(self.array, *callargs, **kwargs))
 
     @property
     def arrow(self) -> ak.Array:
@@ -413,12 +439,14 @@ class Accessor(ArithmeticMixin):
             args = list(args) + list(extra or [])
             return op(*args, **kw)
 
-        def f(self, *args, **kw):
+        def f(self, *args, where=None, **kw):
             # TODO: test here is for literals, but really we want "don't know how to
             #  array that" condition
-            extra = (_ for _ in args if isinstance(_, (str, int, float)))
+            extra = [_ for _ in args if isinstance(_, (str, int, float, np.number))]
             args = (
-                to_ak_layout(_) for _ in args if not isinstance(_, (str, int, float))
+                to_ak_layout(_)
+                for _ in args
+                if not isinstance(_, (str, int, float, np.number))
             )
             out = self.transform(
                 op2,
@@ -427,6 +455,7 @@ class Accessor(ArithmeticMixin):
                 inmode="numpy",
                 extra=extra,
                 outtype=ak.contents.NumpyArray,
+                where=where,
                 **kw,
             )
             if isinstance(self._obj, self.dataframe_type):

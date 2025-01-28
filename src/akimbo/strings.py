@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import functools
-from collections.abc import Callable
 
 import awkward as ak
 import pyarrow.compute as pc
@@ -91,7 +90,7 @@ class StringAccessor:
     def method_name(attr: str) -> str:
         return _SA_METHODMAPPING.get(attr, attr)
 
-    def __getattr__(self, attr: str) -> Callable:
+    def __getattr__(self, attr: str) -> callable:
         attr = self.method_name(attr)
         fn = getattr(ak.str, attr)
 
