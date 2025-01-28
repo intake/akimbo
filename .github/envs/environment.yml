@@ -2,15 +2,15 @@ name: test-environment
 channels:
   - conda-forge
 dependencies:
-  # required dependencies
   - pandas
   - polars
-  - dask
-  - pyarrow
+  - dask >=2025
+  - pyarrow >=17
+  - numpy >=2
   - pytest
   - pytest-cov
   - numba
-  - dask-awkward
+  - awkward
   - distributed
   - openjdk ==20
   - pyspark
