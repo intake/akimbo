@@ -14,5 +14,6 @@ dependencies:
   - distributed
   - openjdk ==20
   - pyspark
+  - pip
   - pip:
       - git+https://github.com/dask-contrib/dask-awkward
