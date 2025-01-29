@@ -26,7 +26,7 @@ def test_accessor():
     s = pd.Series(data)
     df = pd.DataFrame({"s": s})
     ddf = dd.from_pandas(df, 2)
-    out = ddf.s.ak.count()
+    out = ddf.s.ak.count()  # causes dask warning, as each partition reduces to scalar
     assert out.compute().tolist() == [3, 3]
 
     out = ddf.s.ak.count(axis=1).compute()

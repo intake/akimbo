@@ -2,18 +2,19 @@ name: test-environment
 channels:
   - conda-forge
 dependencies:
+  - dask >=2025
   - pandas
   - polars
-  - dask >=2025
-  - pyarrow >=17
-  - numpy >=2
+  - pyspark
+  - pyarrow >=15
+  - numpy
   - pytest
   - pytest-cov
   - numba
   - awkward
   - distributed
   - openjdk ==20
-  - pyspark
   - pip
   - pip:
+      - ray[data]
       - git+https://github.com/dask-contrib/dask-awkward
