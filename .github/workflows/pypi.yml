@@ -33,7 +33,7 @@ jobs:
       shell: bash -l {0}
       run: |
         pip install pip wheel -U
-        pip install -e -q --no-cache-dir .[test]
+        pip install -q --no-cache-dir -e .[test]
         pip list
     - name: test
       shell: bash -l {0}

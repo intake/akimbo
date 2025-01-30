@@ -49,6 +49,17 @@ def test_unary(df):
     assert result.y.tolist() == expected.tolist()
 
 
+def test_dt(spark):
+    data = pd.DataFrame(
+        {"a": pd.Series(pd.date_range(start="2024-01-01", end="2024-01-02", freq="h"))}
+    ).ak.to_output()
+    df = spark.createDataFrame(data)
+    out = df.ak.dt.strftime()
+    result = out.ak.to_output()
+
+    assert result.a.tolist() == data.a.tolist()
+
+
 def test_select(df):
     out = df.ak["x"]
     result = out.ak.to_output()

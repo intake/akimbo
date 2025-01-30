@@ -89,6 +89,8 @@ class SparkAccessor(Accessor):
                     elif hasattr(ak, item):
                         func = getattr(ak, item)
                         args = (arr,)
+                    else:
+                        raise KeyError(item)
 
                     out = func(*args, *inargs0, **kwargs)
                     if not out.layout.is_record:

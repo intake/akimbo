@@ -1,5 +1,5 @@
 import awkward as ak  # noqa
-import ray.data
+import ray.data as rd
 
 from akimbo.mixin import Accessor
 
@@ -7,9 +7,9 @@ from akimbo.mixin import Accessor
 
 
 class RayAccessor(Accessor):
-    dataframe_type = ray.data.Dataset
+    dataframe_type = rd.Dataset
     series_type = None  # only has "dataframe like"
 
     @classmethod
-    def _to_output(cls, data: ray.data.Dataset):
-        return data.to_pandas()
+    def _to_output(cls, data: rd.Dataset):
+        return data.to_pandas()  # automatically has arrow types
