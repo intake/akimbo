@@ -151,7 +151,7 @@ class Accessor(ArithmeticMixin):
 
     @classmethod
     def is_series(cls, data):
-        return isinstance(data, cls.series_type)
+        return isinstance(data, cls.series_type) if cls.series_type else False
 
     @classmethod
     def is_dataframe(cls, data):
@@ -203,6 +203,9 @@ class Accessor(ArithmeticMixin):
         This process walks thought the data's schema tree, and applies the given
         function only on the matching nodes.
 
+        The function input(s) and output depend on inmode and outttpe
+        arguments.
+
         Parameters
         ----------
         fn: the operation you want to perform. Typically unary or binary, and may take
@@ -250,7 +253,7 @@ class Accessor(ArithmeticMixin):
     def __dir__(self) -> Iterable[str]:
         attrs = (_ for _ in dir(self.array) if not _.startswith("_"))
         meths = series_methods if self.is_series(self._obj) else df_methods
-        return sorted(set(attrs) | set(meths))
+        return sorted(set(attrs) | set(meths) | set(self.subaccessors))
 
     def with_behavior(self, behavior, where=()):
         """Assign a behavior to this array-of-records"""
@@ -319,7 +322,7 @@ class Accessor(ArithmeticMixin):
         return ak.from_arrow(self.arrow)
 
     @classmethod
-    def register_accessor(cls, name, klass):
+    def register_accessor(cls, name: str, klass: type):
         # TODO: check clobber?
         cls.subaccessors[name] = klass
 

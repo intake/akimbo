@@ -1,4 +1,5 @@
-from typing import Iterable
+import functools
+from typing import Callable, Iterable
 
 import awkward as ak
 import numpy as np
@@ -7,32 +8,66 @@ import pyspark
 from pyspark.sql.pandas.types import from_arrow_schema, to_arrow_schema
 
 from akimbo.apply_tree import run_with_transform
+from akimbo.datetimes import DatetimeAccessor
+from akimbo.datetimes import match as match_dt
 from akimbo.mixin import Accessor, match_any, numeric
 from akimbo.pandas import pd
-from akimbo.strings import StringAccessor
+from akimbo.strings import StringAccessor, match_string, strptime
 from akimbo.utils import to_ak_layout
 
 sdf = pyspark.sql.DataFrame
 
 
 class SparkStringAccessor(StringAccessor):
+    def __init__(self, *_):
+        pass
+
     def __getattr__(self, attr: str) -> callable:
         attr = self.method_name(attr)
         return getattr(ak.str, attr)
 
+    @property
+    def strptime(self):
+        @functools.wraps(strptime)
+        def run(*arrs, **kwargs):
+            arr, *other = arrs
+            return run_with_transform(arr, strptime, match_string, **kwargs)
+
+        return run
+
+
+class SparkDatetimeAccessor:
+    def __init__(self, *_):
+        pass
+
+    def __getattr__(self, item):
+        if item in dir(DatetimeAccessor):
+            fn = getattr(DatetimeAccessor, item)
+            if hasattr(fn, "__wrapped__"):
+                func = fn.__wrapped__  # arrow function
+            else:
+                raise AttributeError
+        else:
+            raise AttributeError
+
+        @functools.wraps(func)
+        def run(*arrs, **kwargs):
+            arr, *other = arrs
+            return run_with_transform(arr, func, match_dt, **kwargs)
+
+        return run
+
+    def __dir__(self):
+        return dir(DatetimeAccessor)
+
 
 class SparkAccessor(Accessor):
+    subaccessors = Accessor.subaccessors.copy()
     dataframe_type = sdf
 
     def __init__(self, obj, subaccessor=None, behavior=None):
         super().__init__(obj, behavior)
         self.subaccessor = subaccessor
-        # ugly way to override
-        self.subaccessors = Accessor.subaccessors.copy()
-        self.subaccessors["str"] = SparkStringAccessor(self)
-
-    def __dir__(self) -> Iterable[str]:
-        return dir(pd.DataFrame.ak)
 
     def to_arrow(self, data) -> pa.Table:
         # collects data locally
@@ -49,12 +84,12 @@ class SparkAccessor(Accessor):
         return data
 
     def __getattr__(self, item: str) -> sdf:
-        if item in self.subaccessors:
+        if isinstance(item, str) and item in self.subaccessors:
             return SparkAccessor(self._obj, subaccessor=item, behavior=self._behavior)
 
-        def select(*inargs, subaccessor=self.subaccessor, **kwargs):
+        def select(*inargs, subaccessor=self.subaccessor, where=None, **kwargs):
             if subaccessor:
-                func0 = getattr(self.subaccessors[subaccessor], item)
+                func0 = getattr(self.subaccessors[subaccessor](), item)
             elif callable(item):
                 func0 = item
             else:
@@ -68,12 +103,17 @@ class SparkAccessor(Accessor):
                         arr, other = arr["_1"], arr["_df2"]
                         if other.fields == ["_ak_series_"]:
                             other = other["_ak_series_"]
+                        if where is not None:
+                            other = other[where]
                         inargs0 = [
                             other if str(_) == "_ak_other_" else _ for _ in inargs
                         ]
                     else:
                         inargs0 = inargs
                         other = None
+                    if where:
+                        arr0 = arr
+                        arr = arr[where]
                     if arr.fields == ["_ak_series_"]:
                         arr = arr["_ak_series_"]
 
@@ -93,7 +133,9 @@ class SparkAccessor(Accessor):
                         raise KeyError(item)
 
                     out = func(*args, *inargs0, **kwargs)
-                    if not out.layout.is_record:
+                    if where:
+                        out = ak.with_field(arr0, out, where)
+                    if not out.layout.fields:
                         out = ak.Array({"_ak_series_": out})
                     arrout = ak.to_arrow(
                         out,
@@ -132,34 +174,15 @@ class SparkAccessor(Accessor):
         ufunc, call, inputs, *callargs = args
         if out is not None or call != "__call__":
             raise NotImplementedError
-        # if where:
-        #     # called like np.add(df.ak, 1, where="...")
-        #     bits = tuple(where.split(".")) if isinstance(where, str) else where
-        #     arr = self.array
-        #     part = arr.__getitem__(bits)
-        #     callargs = (
-        #         _ if isinstance(_, (str, int, float, np.number)) else to_ak_layout(_).__getitem__(bits)
-        #         for _ in callargs
-        #     )
-        #     callkwargs = {
-        #         k: _ if isinstance(_, (str, int, float, np.number)) else to_ak_layout(_).__getitem__(bits)
-        #         for k, _ in kwargs.items()
-        #     }
-        #
-        #     out = self.to_output(ufunc(part, *callargs, **kwargs))
-        #     return self.to_output(ak.with_field(arr, out, where=where))
 
-        return self.__getattr__(ufunc)(*callargs, **kwargs)
+        return self.__getattr__(ufunc)(*callargs, where=where, **kwargs)
 
     def __getitem__(self, item) -> sdf:
         def f(batches):
-            import akimbo.pandas  # noqa
-
             for batch in batches:
-                df = batch.to_pandas(types_mapper=pd.ArrowDtype)
-                arr = df.ak.array
+                arr = ak.from_arrow(batch)
                 arr2 = arr.__getitem__(item)
-                if not arr2.layout.is_record:
+                if not arr2.fields:
                     arr2 = ak.Array({"_ak_series_": arr2})
                 out = ak.to_arrow(
                     arr2,
@@ -192,6 +215,9 @@ class SparkAccessor(Accessor):
 
         return self.__getattr__(f)(*others, **kwargs)
 
+    def apply(self, fn: Callable, *others, where=None, **kwargs):
+        return self.__getattr__(fn)(*others, **kwargs)
+
     @classmethod
     def _create_op(cls, op):
         def run(self, *args, **kwargs):
@@ -203,50 +229,14 @@ class SparkAccessor(Accessor):
 
         return run
 
+    def __dir__(self) -> Iterable[str]:
+        if self.subaccessor is not None:
+            return dir(self.subaccessors[self.subaccessor](self))
+        return super().__dir__()
 
-# from pyspark.sql.types import StructType, StructField, LongType
-#
-#
-# def concat_columns(df1: sdf, df2: sdf) -> sdf:
-#     """Add two DataFrames' columns into a single DF.
-#
-#     Allows dask-like binary operations between unrelated frames, when the zip version
-#     doesn't work. This is slow and requires a pre-compute.
-#     """
-#     def with_column_index(df):
-#         new_schema = StructType(df.schema.fields + [StructField("ColumnIndex", LongType(), False),])
-#         return df.rdd.zipWithIndex().map(lambda row: row[0] + (row[1],)).toDF(schema=new_schema)
-#
-#     df1_ci = with_column_index(df1)
-#     df2_ci = with_column_index(df2)  # rename columns first
-#     join_on_index = df1_ci.join(df2_ci, df1_ci.ColumnIndex == df2_ci.ColumnIndex, 'inner').drop("ColumnIndex")
-#     return join_on_index
-#
-#
-# def concat_columns_zip(df1: sdf, df2: sdf) -> sdf:
-#     """Add two DataFrames' columns into a single DF.
-#
-#     Allows dask-like binary operations between unrelated frames. Requires they have the same
-#     number of partitions and number of rows per partition, dask-style. This is also
-#     slow, as it maps a python func over ll rows, but faster than non-zip version.
-#     """
-#     combined = df1.rdd.zip(df2.rdd).flatMap(
-#         lambda x: pyspark.sql.types.Row(list(x[0]) + list(x[1]))
-#     )
-#     combinedschema =  StructType(df1.schema.fields + df2.schema.fields)
-#     finalDF = df1._session.createDataFrame(combined, combinedschema)
-#     return finalDF
-#
-#
-# def concat_columns_join(df1: sdf, df2: sdf) -> sdf:
-#     """Merges dataframes in a single partition"""
-#     from pyspark.sql.functions import monotonically_increasing_id, row_number
-#     win = pyspark.sql.window.Window().orderBy("MonotonicIndex")
-#     df1_mon = df1.withColumn("MonotonicIndex", monotonically_increasing_id())
-#     df1_ind = df1_mon.withColumn("JoinConcatIndex", row_number().over(win))
-#     df2_mon = df2.withColumn("MonotonicIndex", monotonically_increasing_id())
-#     df2_ind = df2_mon.withColumn("JoinConcatIndex", row_number().over(win))
-#     return df1_ind.join(df2_ind, "JoinConcatIndex", "left").drop("JoinConcatIndex", "MonotonicIndex")
+
+SparkAccessor.register_accessor("dt", SparkDatetimeAccessor)
+SparkAccessor.register_accessor("str", SparkStringAccessor)
 
 
 def concat_columns_zip_index(df1: sdf, df2: sdf) -> sdf:

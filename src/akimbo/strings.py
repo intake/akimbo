@@ -47,12 +47,15 @@ methods = [
     if not aname.startswith(("_", "akstr_")) and not aname[0].isupper()
 ]
 
-# make sensible defaults for strptime
-strptime = functools.wraps(pc.strptime)(
-    lambda *args, format="%FT%T", unit="s", error_is_null=True, **kw: pc.strptime(
-        *args, format=format, unit=unit, error_is_null=error_is_null
+
+@functools.wraps(pc.strptime)
+def strptime(*args, format="%FT%T", unit="us", error_is_null=True, **kw):
+    """strptime with typical defaults set to reverse strftime"""
+    out = pc.strptime(
+        *args, format=format, unit=unit, error_is_null=error_is_null, **kw
     )
-)
+    print(args[0], out, file=open("out", "w"))
+    return out
 
 
 class StringAccessor:

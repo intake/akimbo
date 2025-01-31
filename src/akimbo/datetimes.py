@@ -24,7 +24,7 @@ class DatetimeAccessor:
     floor_temporal = dec_t(pc.floor_temporal)
     reound_temporal = dec_t(pc.round_temporal)
     strftime = dec_t(pc.strftime)
-    strptime = dec_t(pc.strptime)
+    # strptime = dec_t(pc.strptime)  # this is in .str instead
     day = dec_t(pc.day)
     day_of_week = dec_t(pc.day_of_week)
     day_of_year = dec_t(pc.day_of_year)
