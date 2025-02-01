@@ -97,7 +97,8 @@ class RayAccessor(Accessor):
                 if any(isinstance(_, str) and _ == "_ak_other_" for _ in inargs):
                     # binary input
                     other = arr[[_ for _ in arr.fields if _.startswith("_df2_")]]
-                    other._fields = [k[4:] for k in other.fields]
+                    # 5 == len("_df2_"); rename to original fields
+                    other.layout._fields[:] = [k[5:] for k in other.fields]
                     arr = arr[[_ for _ in arr.fields if not _.startswith("_df2_")]]
                     if other.fields == ["_ak_series_"]:
                         other = other["_ak_series_"]
@@ -133,16 +134,13 @@ class RayAccessor(Accessor):
                     out = ak.with_field(arr0, out, where)
                 if not out.layout.fields:
                     out = ak.Array({"_ak_series_": out})
-                arrout = ak.to_arrow(
+                return ak.to_arrow_table(
                     out,
                     extensionarray=False,
                     list_to32=True,
                     string_to32=True,
                     bytestring_to32=True,
                 )
-                if isinstance(arrout, pa.StructArray):
-                    return pa.Table.from_struct_array(arrout)
-                return pa.Table.from_arrays(arrout)
 
             f.__name__ = item.__name__ if callable(item) else item
 
@@ -183,14 +181,13 @@ class RayAccessor(Accessor):
             arr2 = arr.__getitem__(item)
             if not arr2.fields:
                 arr2 = ak.Array({"_ak_series_": arr2})
-            out = ak.to_arrow(
+            return ak.to_arrow_table(
                 arr2,
                 extensionarray=False,
                 list_to32=True,
                 string_to32=True,
                 bytestring_to32=True,
             )
-            return pa.Table.from_struct_array(out)
 
         arrow_type = self._obj.schema().base_schema
         if not isinstance(arrow_type, pa.Schema):

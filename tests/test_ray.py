@@ -106,7 +106,7 @@ def test_ufunc_where(df):
 
 def test_overload(rayc):
     x = pd.Series([1, 2, 3])
-    df = ray.data.from_pandas(pd.DataFrame(x, columns=["_ak_series_"]))
+    df = ray.data.from_arrow(pd.DataFrame(x, columns=["_ak_series_"]).ak.arrow)
 
     out = df.ak + 1  # scalar
     result = out.ak.to_output()
