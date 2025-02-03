@@ -1,3 +1,4 @@
+import awkward as ak
 import numpy as np
 import pytest
 
@@ -124,3 +125,24 @@ def test_overload(rayc):
 def test_dir(df):
     assert "flatten" in dir(df.ak)
     assert "upper" in dir(df.ak.str)
+
+
+def test_apply_numba(df):
+    numba = pytest.importorskip("numba")
+
+    @numba.njit()
+    def f(data: ak.Array, builder: ak.ArrayBuilder) -> None:
+        for i, item in enumerate(data.x):
+            if item[0] is None:
+                builder.append(None)
+            else:
+                builder.append(item[0][2] + item[2][0])  # always 6
+
+    def f2(data):
+        builder = ak.ArrayBuilder()
+        f(data, builder)
+        return builder.snapshot()
+
+    out = df.ak.apply(f2, where="x")
+    result = out.ak.to_output()
+    assert result.ak.tolist() == [6, None] * 100

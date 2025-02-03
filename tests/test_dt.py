@@ -78,4 +78,6 @@ def test_text_conversion():
     s = pd.Series([["2024-08-01T01:00:00", None, "2024-08-01T01:01:00"]])
     s2 = s.ak.str.strptime()
     s3 = s2.ak.dt.strftime("%FT%T")
-    assert s3.tolist() == [["2024-08-01T01:00:00", None, "2024-08-01T01:01:00"]]
+    # remove trailing zeros - depends on system defaults
+    out = [None if _ is None else _.split(".")[0] for _ in s3.tolist()[0]]
+    assert out == ["2024-08-01T01:00:00", None, "2024-08-01T01:01:00"]
