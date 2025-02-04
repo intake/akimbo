@@ -107,6 +107,12 @@ for meth in dir(DatetimeColumn):
 
 
 class CudfAwkwardAccessor(Accessor):
+    """Operations on cuDF dataframes on the GPU.
+
+    Data are kept in GPU memory and use views rather than copies where
+    possible.
+    """
+
     series_type = Series
     dataframe_type = DataFrame
 

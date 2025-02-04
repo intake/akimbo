@@ -62,6 +62,12 @@ class SparkDatetimeAccessor:
 
 
 class SparkAccessor(Accessor):
+    """Operations on pyspark dataframes.
+
+    This is a lazy backend, and operates partition-wise. It predicts the schema
+    of each operation by running with an empty dataframe of the correct type.
+    """
+
     subaccessors = Accessor.subaccessors.copy()
     dataframe_type = sdf
 

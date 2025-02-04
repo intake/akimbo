@@ -1,21 +1,6 @@
 akimbo
 ==============
 
-.. currentmodule:: akimbo
-
-Top Level Functions
-~~~~~~~~~~~~~~~~~~~
-
-.. autosummary::
-   :toctree: generated/
-
-   read_parquet
-   read_json
-   read_avro
-   get_parquet_schema
-   get_json_schema
-   get_avro_schema
-
 Accessor
 ~~~~~~~~
 
@@ -38,6 +23,8 @@ Backends
     akimbo.dask.DaskAwkwardAccessor
     akimbo.polars.PolarsAwkwardAccessor
     akimbo.cudf.CudfAwkwardAccessor
+    akimbo.ray.RayAccessor
+    akimbo.spark.SparkAccessor
 
 .. autoclass:: akimbo.pandas.PandasAwkwardAccessor
 
@@ -46,6 +33,25 @@ Backends
 .. autoclass:: akimbo.polars.PolarsAwkwardAccessor
 
 .. autoclass:: akimbo.cudf.CudfAwkwardAccessor
+
+.. autoclass:: akimbo.ray.RayAccessor
+
+.. autoclass:: akimbo.spark.SparkAccessor
+
+Top Level Functions
+~~~~~~~~~~~~~~~~~~~
+.. currentmodule:: akimbo
+
+
+.. autosummary::
+   :toctree: generated/
+
+   read_parquet
+   read_json
+   read_avro
+   get_parquet_schema
+   get_json_schema
+   get_avro_schema
 
 
 Extensions

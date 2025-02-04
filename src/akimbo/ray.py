@@ -59,6 +59,12 @@ class RayDatetimeAccessor:
 
 
 class RayAccessor(Accessor):
+    """Operations on ray.data.Dataset dataframes.
+
+    This is a lazy backend, and operates partition-wise. It predicts the schema
+    of each operation by running with an empty dataframe of the correct type.
+    """
+
     dataframe_type = rd.Dataset
     series_type = None  # only has "dataframe like"
     subaccessors = Accessor.subaccessors.copy()

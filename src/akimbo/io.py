@@ -6,6 +6,7 @@ import numpy as np
 
 
 def ak_to_series(ds, backend="pandas", extract=True):
+    """Make backend-specific series from data"""
     if backend == "pandas":
         import akimbo.pandas
 
@@ -23,6 +24,9 @@ def ak_to_series(ds, backend="pandas", extract=True):
         import akimbo.cudf
 
         s = akimbo.cudf.CudfAwkwardAccessor._to_output(ds)
+    elif backend in ["ray", "spark"]:
+        raise ValueError("Backend only supports dataframes, not series")
+
     else:
         raise ValueError("Backend must be in {'pandas', 'polars', 'dask'}")
     if extract and ds.fields:
@@ -30,6 +34,8 @@ def ak_to_series(ds, backend="pandas", extract=True):
     return s
 
 
+# TODO: read_parquet should use native versions rather than convert. This version
+#  is OK for pandas
 def read_parquet(
     url: str,
     storage_options: dict | None = None,
@@ -60,6 +66,8 @@ def read_parquet(
     return ak_to_series(ds, backend, extract=extract)
 
 
+# TODO: should be a map over input files, maybe with newline byte blocks
+#  as in dask
 def read_json(
     url: str,
     storage_options: dict | None = None,
@@ -124,6 +132,8 @@ def get_json_schema(
     return layout_to_jsonschema(arr.layout)
 
 
+# TODO: should be a map over input files, maybe with newline byte blocks
+#  as in dask
 def read_avro(
     url: str,
     storage_options: dict | None = None,
@@ -205,9 +215,9 @@ def join(
         merge = _merge
 
     counts = np.empty(len(table1), dtype="uint64")
-    # TODO: the line below over-allocates, can switch to somehing growable
+    # TODO: the line below over-allocates, can switch to something growable
     matches = np.empty(len(table2), dtype="uint64")
-    # TODO: to_numpy(allow_missong) makes this a bit faster, but is not
+    # TODO: to_numpy(allow_missing) makes this a bit faster, but is not
     #  not GPU general
     counts, matches, ind = merge(table1[key], table2[key], counts, matches)
     matches.resize(int(ind), refcheck=False)

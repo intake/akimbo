@@ -5,7 +5,11 @@ Requirements
 ~~~~~~~~~~~~
 
 To install ``akimbo`` you will need ``awkward`` and
-one of the backend libraries: ``pandas``, ``dask`` or ``polars``.
+one of the backend libraries: ``pandas``, ``dask``, ``cuDF``, ``ray.data``,
+``pyspark`` or ``polars``. Each of there have various installation options,
+please see their respective documentation.
+
+``akimbo`` depends on ``pyarrow`` and ``awkward``.
 
 
 From PyPI
