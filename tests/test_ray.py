@@ -24,7 +24,7 @@ def df(rayc, tmpdir):
     import ray.data
 
     pd.DataFrame({"x": x, "y": y}).to_parquet(f"{tmpdir}/a.parquet")
-    return ray.data.read_parquet(f"{tmpdir}/a.parquet")
+    return ray.data.read_parquet(f"{tmpdir}/a.parquet", override_num_blocks=2)
 
 
 def test_unary(df):

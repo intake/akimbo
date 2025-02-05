@@ -1,3 +1,6 @@
+import os
+import sys
+
 import awkward as ak
 import numpy as np
 import pytest
@@ -15,6 +18,9 @@ y = pd.Series([["hey", None], ["hi", "ho"]] * 100).ak.to_output()
 @pytest.fixture(scope="module")
 def spark():
     from pyspark.sql import SparkSession
+
+    os.environ["PYSPARK_PYTHON"] = sys.executable
+    os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
 
     return (
         SparkSession.builder
