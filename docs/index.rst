@@ -24,6 +24,8 @@ identical syntax:
 - dask.dataframe
 - polars
 - cuDF
+- ray dataset
+- pyspark
 
 
 numpy-like API
@@ -110,6 +112,13 @@ the ``akimbo`` system, you can apply these methods to ragged/nested dataframes.
 
    install.rst
    quickstart.ipynb
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Demos
+
+   akimbo-demo.ipynb
+   cudf-ak.ipynb
 
 .. toctree::
    :maxdepth: 1

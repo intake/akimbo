@@ -69,7 +69,7 @@ class DaskAwkwardAccessor(AkAccessor):
                 ar = [self._to_tt(ar) if hasattr(ar, "ak") else ar for ar in ar]
                 out = op(tt, *ar, **kwargs)
                 meta = PandasAwkwardAccessor._to_output(
-                    ak.typetracer.length_zero_if_typetracer(out)
+                    ak.typetracer.length_one_if_typetracer(out)
                 )
             except (ValueError, TypeError):
                 meta = None

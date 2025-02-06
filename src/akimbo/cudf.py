@@ -107,6 +107,12 @@ for meth in dir(DatetimeColumn):
 
 
 class CudfAwkwardAccessor(Accessor):
+    """Operations on cuDF dataframes on the GPU.
+
+    Data are kept in GPU memory and use views rather than copies where
+    possible.
+    """
+
     series_type = Series
     dataframe_type = DataFrame
 
@@ -145,9 +151,17 @@ class CudfAwkwardAccessor(Accessor):
     try:
         cast = dec_cu(libcudf.unary.cast, match=leaf)
     except AttributeError:
+
         def cast_inner(col, dtype):
-            return cudf.core.column.ColumnBase(col.data, size=len(col), dtype=np.dtype(dtype),
-                                               mask=None, offset=0, children=())
+            return cudf.core.column.ColumnBase(
+                col.data,
+                size=len(col),
+                dtype=np.dtype(dtype),
+                mask=None,
+                offset=0,
+                children=(),
+            )
+
         cast = dec_cu(cast_inner, match=leaf)
 
     @property

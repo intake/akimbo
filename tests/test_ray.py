@@ -1,4 +1,3 @@
-import os
 import sys
 
 import awkward as ak
@@ -7,37 +6,28 @@ import pytest
 
 WIN = sys.platform.startswith("win")
 pd = pytest.importorskip("pandas")
-pyspark = pytest.importorskip("pyspark")
+ray = pytest.importorskip("ray")
 
 pytest.importorskip("akimbo.pandas")
-pytest.importorskip("akimbo.spark")
+pytest.importorskip("akimbo.ray")
 
 x = pd.Series([[[1, 2, 3], [], [3, 4, None]], [None]] * 100).ak.to_output()
 y = pd.Series([["hey", None], ["hi", "ho"]] * 100).ak.to_output()
 
 
 @pytest.fixture(scope="module")
-def spark():
-    from pyspark.sql import SparkSession
-
-    os.environ["PYSPARK_PYTHON"] = sys.executable
-    os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
-
-    return (
-        SparkSession.builder
-        # .config("spark.sql.execution.arrow.enabled", "true")  # this was spark<3.0.0
-        .config("spark.sql.execution.pythonUDF.arrow.enabled", "true")
-        .config("spark.sql.execution.arrow.pyspark.enabled", "true")
-        .config("spark.sql.execution.arrow.pyspark.fallback.enabled", "false")
-        .appName("test")
-        .getOrCreate()
-    )
+def rayc():
+    context = ray.init()
+    yield context
+    context.disconnect()
 
 
 @pytest.fixture()
-def df(spark, tmpdir):
+def df(rayc, tmpdir):
+    import ray.data
+
     pd.DataFrame({"x": x, "y": y}).to_parquet(f"{tmpdir}/a.parquet")
-    return spark.read.parquet(f"{tmpdir}/a.parquet")
+    return ray.data.read_parquet(f"{tmpdir}/a.parquet", override_num_blocks=2)
 
 
 def test_unary(df):
@@ -58,23 +48,19 @@ def test_unary(df):
 
 
 @pytest.mark.skipif(WIN, reason="may not have locale on windows")
-def test_dt(spark):
-    data = (
-        pd.DataFrame(
-            {
-                "_ak_series_": pd.Series(
-                    pd.date_range(start="2024-01-01", end="2024-01-02", freq="h")
-                )
-            }
-        )
-        .ak.to_output()
-        .ak.unpack()
+def test_dt(rayc):
+    data = pd.DataFrame(
+        {
+            "_ak_series_": pd.Series(
+                pd.date_range(start="2024-01-01", end="2024-01-02", freq="h")
+            )
+        }
     )
-    df = spark.createDataFrame(data)
+    df = ray.data.from_arrow(data.ak.arrow)
     out = df.ak.dt.strftime()
     result = out.ak.to_output()
 
-    assert result[0] == "2024-01-01T00:00:00.000000"
+    assert result[0] == "2024-01-01T00:00:00.000000000"  # defaults to ns
 
     out = df.ak.dt.hour()
     result = out.ak.to_output()
@@ -123,9 +109,9 @@ def test_ufunc_where(df):
     assert result.x.tolist() == expected.tolist()
 
 
-def test_overload(spark):
+def test_overload(rayc):
     x = pd.Series([1, 2, 3])
-    df = spark.createDataFrame(pd.DataFrame(x, columns=["_ak_series_"]))
+    df = ray.data.from_arrow(pd.DataFrame(x, columns=["_ak_series_"]).ak.arrow)
 
     out = df.ak + 1  # scalar
     result = out.ak.to_output()
@@ -148,6 +134,7 @@ def test_dir(df):
 def test_apply_numba(df):
     numba = pytest.importorskip("numba")
 
+    @numba.njit()
     def f(data: ak.Array, builder: ak.ArrayBuilder) -> None:
         for i, item in enumerate(data.x):
             if item[0] is None:
@@ -156,13 +143,9 @@ def test_apply_numba(df):
                 builder.append(item[0][2] + item[2][0])  # always 6
 
     def f2(data):
-        if len(data):
-            builder = ak.ArrayBuilder()
-            numba.njit(f)(data, builder)
-            return builder.snapshot()
-        else:
-            # default output for zero-length schema guesser
-            return ak.Array([None, 6])
+        builder = ak.ArrayBuilder()
+        f(data, builder)
+        return builder.snapshot()
 
     out = df.ak.apply(f2, where="x")
     result = out.ak.to_output()
