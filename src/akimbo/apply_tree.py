@@ -80,7 +80,11 @@ def dec(
     match: function to determine if a part of the data structure matches the type we want to
         operate on
     outtype: postprocessing function after transform
-    inmode: how ``func`` expects its inputs: as awkward arrays (ak), numpy or arrow
+    inmode: how ``func`` expects its inputs: as
+        - ak: awkward arrays,
+        - numpy
+        - arrow
+        - other: anything that can be cast to ak arrays, e.g., number literals
     """
 
     @functools.wraps(func)
