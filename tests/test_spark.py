@@ -5,6 +5,7 @@ import awkward as ak
 import numpy as np
 import pytest
 
+WIN = sys.platform.startswith("win")
 pd = pytest.importorskip("pandas")
 pyspark = pytest.importorskip("pyspark")
 
@@ -56,6 +57,7 @@ def test_unary(df):
     assert result.y.tolist() == expected.tolist()
 
 
+@pytest.mark.skipif(WIN, reason="may not have locale on windows")
 def test_dt(spark):
     data = (
         pd.DataFrame(

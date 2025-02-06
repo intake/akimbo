@@ -1,7 +1,10 @@
+import sys
+
 import awkward as ak
 import numpy as np
 import pytest
 
+WIN = sys.platform.startswith("win")
 pd = pytest.importorskip("pandas")
 ray = pytest.importorskip("ray")
 
@@ -44,6 +47,7 @@ def test_unary(df):
     assert result.y.tolist() == expected.tolist()
 
 
+@pytest.mark.skipif(WIN, reason="may not have locale on windows")
 def test_dt(rayc):
     data = pd.DataFrame(
         {
