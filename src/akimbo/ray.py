@@ -86,7 +86,7 @@ class RayAccessor(Accessor):
             data = data["_ak_series_"]
         return data
 
-    def __getattr__(self, item: str) -> rd.Dataset:
+    def __getattr__(self, item: str) -> callable:
         if isinstance(item, str) and item in self.subaccessors:
             return RayAccessor(self._obj, subaccessor=item, behavior=self._behavior)
 
@@ -113,7 +113,6 @@ class RayAccessor(Accessor):
                     inargs0 = [other if str(_) == "_ak_other_" else _ for _ in inargs]
                 else:
                     inargs0 = inargs
-                    other = None
                 if where:
                     arr0 = arr
                     arr = arr[where]

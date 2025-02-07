@@ -3,12 +3,13 @@ import pandas as pd
 import pytest
 
 duckdb = pytest.importorskip("duckdb")
+import akimbo.duck
 
 
 @pytest.fixture()
 def db():
-    conn = duckdb.connect()
-    yield
+    conn = duckdb.connect(":default:")
+    yield conn
     conn.close()
 
 
@@ -20,3 +21,20 @@ y = pd.Series([["hey", None], ["hi", "ho"]] * 100).ak.to_output()
 def df(db, tmpdir):
     pd.DataFrame({"x": x, "y": y}).to_parquet(f"{tmpdir}/a.parquet")
     return db.from_parquet(f"{tmpdir}/a.parquet")
+
+
+def test_unary(df):
+    out = df.ak.is_none()
+    result = out.ak.to_output()
+    expected = x.ak.is_none()
+    assert result.x.tolist() == expected.tolist()
+
+    out = df.ak.is_none(axis=1)
+    result = out.ak.to_output()
+    expected = x.ak.is_none(axis=1)
+    assert result.x.tolist() == expected.tolist()
+
+    out = df.ak.str.upper()
+    result = out.ak.to_output()
+    expected = y.ak.str.upper()
+    assert result.y.tolist() == expected.tolist()
