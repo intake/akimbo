@@ -1,9 +1,8 @@
-import awkward as ak
 import pandas as pd
 import pytest
 
 duckdb = pytest.importorskip("duckdb")
-import akimbo.duck
+import akimbo.duck  # noqa
 
 
 @pytest.fixture()
@@ -38,3 +37,14 @@ def test_unary(df):
     result = out.ak.to_output()
     expected = y.ak.str.upper()
     assert result.y.tolist() == expected.tolist()
+
+
+def test_select(df):
+    out = df.ak["x"]
+    result = out.ak.to_output()
+    assert isinstance(result, pd.Series)
+    assert result.tolist() == x.tolist()
+    out = df.ak[:, ::2]
+    result = out.ak.to_output()
+    expected = x.ak[:, ::2]
+    assert result.x.tolist() == expected.tolist()

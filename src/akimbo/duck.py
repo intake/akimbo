@@ -1,3 +1,4 @@
+import functools
 import uuid
 
 import awkward as ak
@@ -5,10 +6,56 @@ import duckdb
 import duckdb.duckdb.typing as dtyp
 import pyarrow as pa
 
+from akimbo.apply_tree import run_with_transform
+from akimbo.datetimes import DatetimeAccessor
+from akimbo.datetimes import match as match_dt
 from akimbo.mixin import Accessor
+from akimbo.strings import StringAccessor, match_string, strptime
+
 
 # https://duckdb.org/docs/sql/query_syntax/from#positional-joins
 # SELECT * FROM df1 POSITIONAL JOIN df2;
+class DuckStringAccessor(StringAccessor):
+    def __init__(self, *_):
+        pass
+
+    def __getattr__(self, attr: str) -> callable:
+        attr = self.method_name(attr)
+        return getattr(ak.str, attr)
+
+    @property
+    def strptime(self):
+        @functools.wraps(strptime)
+        def run(*arrs, **kwargs):
+            arr, *other = arrs
+            return run_with_transform(arr, strptime, match_string, **kwargs)
+
+        return run
+
+
+class DuckDatetimeAccessor:
+    def __init__(self, *_):
+        pass
+
+    def __getattr__(self, item):
+        if item in dir(DatetimeAccessor):
+            fn = getattr(DatetimeAccessor, item)
+            if hasattr(fn, "__wrapped__"):
+                func = fn.__wrapped__  # arrow function
+            else:
+                raise AttributeError
+        else:
+            raise AttributeError
+
+        @functools.wraps(func)
+        def run(*arrs, **kwargs):
+            arr, *other = arrs
+            return run_with_transform(arr, func, match_dt, **kwargs)
+
+        return run
+
+    def __dir__(self):
+        return dir(DatetimeAccessor)
 
 
 class DuckAccessor(Accessor):
@@ -30,6 +77,8 @@ class DuckAccessor(Accessor):
         data = self.to_arrow(data or self._obj).to_pandas(types_mapper=pd.ArrowDtype)
         if list(data.columns) == ["_ak_series_"]:
             data = data["_ak_series_"]
+        elif list(data.columns) == ["_ak_dataframe_"]:
+            data = data["_ak_dataframe_"].ak.unpack()
         return data
 
     def __getattr__(self, item: str) -> callable:
@@ -46,8 +95,9 @@ class DuckAccessor(Accessor):
             else:
                 func0 = None
 
-            def f(batch):
+            def f(batch: pa.ChunkedArray) -> pa.Table:
                 arr = ak.from_arrow(batch)
+                arr0 = arr
                 if any(isinstance(_, str) and _ == "_ak_other_" for _ in inargs):
                     # binary input
                     other = arr[[_ for _ in arr.fields if _.startswith("_df2_")]]
@@ -61,13 +111,15 @@ class DuckAccessor(Accessor):
                     inargs0 = [other if str(_) == "_ak_other_" else _ for _ in inargs]
                 else:
                     inargs0 = inargs
-                if where:
-                    arr0 = arr
-                    arr = arr[where]
+                if arr.fields == ["_ak_dataframe_"]:
+                    arr = arr["_ak_dataframe_"]
+                if arr.layout.is_option:
+                    # A whole row cannot be NULL
+                    arr = ak.Array(arr.layout.content)
                 if arr.fields == ["_ak_series_"]:
                     arr = arr["_ak_series_"]
-                if arr.layout.is_option:
-                    arr = ak.Array(arr.layout.content)
+                if where:
+                    arr = arr[where]
 
                 if callable(func0):
                     func = func0
@@ -75,9 +127,6 @@ class DuckAccessor(Accessor):
                 elif hasattr(arr, item) and callable(getattr(arr, item)):
                     func = getattr(arr, item)
                     args = ()
-                elif subaccessor:
-                    func = func0
-                    args = (arr,)
                 elif hasattr(ak, item):
                     func = getattr(ak, item)
                     args = (arr,)
@@ -87,7 +136,10 @@ class DuckAccessor(Accessor):
                 out = func(*args, *inargs0, **kwargs)
                 if where:
                     out = ak.with_field(arr0, out, where)
-                out = ak.Array({"_ak_series_": out})
+                if not out.layout.is_record:
+                    out = ak.Array({"_ak_series_": out})
+                elif len(out.fields) != 1:
+                    out = ak.Array({"_ak_dataframe_": out})
                 return ak.to_arrow_table(
                     out,
                     extensionarray=False,
@@ -114,47 +166,66 @@ class DuckAccessor(Accessor):
                 obj = self._obj
 
             if len(obj.dtypes) > 1:
-                obj = _pack_sql(obj)
+                name = "_ak_dataframe_"
+                obj = self.pack(name=name)  # no-compute operation
+            else:
+                name = "_ak_series_"
 
             arrow_type = pa.schema(
-                [
-                    (c, duckdb_to_pyarrow_type(t))
-                    for c, t in zip(obj.columns, obj.dtypes)
-                ]
+                [(obj.columns[0], duckdb_to_pyarrow_type(obj.dtypes[0]))]
             )
-            arr = pa.table([[]] * len(arrow_type), schema=arrow_type)
-            out1 = f(arr)
+            arr = pa.table([[]], schema=arrow_type)
+            out1 = f(arr)  # noqa ; used implicitly in next line
             out2 = duckdb.sql("SELECT * FROM out1").dtypes[0]
             fname = f"{item}_{uuid.uuid4().hex}"
-            s_type = obj.types[
-                0
-            ]  # duckdb.struct_type(dict(zip(obj.columns, obj.types)))
             duckdb.create_function(
-                fname, f, [s_type], out2, type=duckdb.functional.PythonUDFType.ARROW
+                fname, f, obj.types, out2, type=duckdb.functional.PythonUDFType.ARROW
             )
-            result = duckdb.sql(
-                f"SELECT {fname}({obj.columns[0]}) as {obj.columns[0]} FROM obj"
-            )
-            breakpoint()
+            # this operates on the one known column, so in the function the column
+            # has been normalised out
+            result = duckdb.sql(f"SELECT {fname}({obj.columns[0]}) as {name} FROM obj")
             return result
 
         return select
 
+    def __getitem__(self, item):
+        def f(batch):
+            arr = ak.from_arrow(batch)
+            arr2 = arr.__getitem__(item)
+            if not arr2.fields:
+                arr2 = ak.Array({"_ak_series_": arr2})
+            return ak.to_arrow_table(
+                arr2,
+                extensionarray=False,
+                list_to32=True,
+                string_to32=True,
+                bytestring_to32=True,
+            )
 
-def _pack_sql(obj):
-    """sql operation equivalent to .ak.pack()"""
-    inner = ",".join(f"{k} := {k}" for k in obj.columns)
-    return duckdb.sql(f"SELECT struct_pack({inner}) as _ak_series_ FROM obj")
+        arrow_type = self._obj.schema().base_schema
+        if not isinstance(arrow_type, pa.Schema):
+            # TODO: fix, for data via from_pandas or from_numpy
+            raise ValueError("Use arrow types")
+        arr = pa.table([[]] * len(arrow_type), schema=arrow_type)
+        out1 = f(arr)
+        out_schema = pa.table(out1).schema
+        result = self._obj.map_batches(f, zero_copy_batch=True, batch_format="pyarrow")
+        result._plan.cache_schema(out_schema)
+        return result
 
+    def pack(self, name="_ak_series_"):
+        obj = self._obj
+        inner = ",".join(f"{k} := {k}" for k in obj.columns)
+        return duckdb.sql(f"SELECT struct_pack({inner}) as {name} FROM obj")
 
-def _unpack_sql(obj):
-    """sql operation equivalent to .ak.unpack()"""
-    assert [_.id for _ in obj.dtypes] == ["struct"]
-    columns = obj.dtypes[0].children
-    inner = ", ".join(
-        f"struct_extract({obj.columns[0]}, '{c}') as {c}" for c in columns
-    )
-    return duckdb.sql(f"SELECT {inner} FROM obj")
+    def unpack(self):
+        obj = self._obj
+        assert [_.id for _ in obj.dtypes] == ["struct"]
+        columns = obj.dtypes[0].children
+        inner = ", ".join(
+            f"struct_extract({obj.columns[0]}, '{c}') as {c}" for c in columns
+        )
+        return duckdb.sql(f"SELECT {inner} FROM obj")
 
 
 def _pack_struct_type(obj):
@@ -166,7 +237,7 @@ def _unpack_struct_type(obj):
 
 
 def duckdb_to_pyarrow_type(duckdb_type: dtyp.DuckDBPyType) -> pa.DataType:
-    # Basic type mapping
+    """Convert complex schema"""
     type_map = {
         "tinyint": pa.int8(),
         "smallint": pa.int16(),
@@ -184,12 +255,12 @@ def duckdb_to_pyarrow_type(duckdb_type: dtyp.DuckDBPyType) -> pa.DataType:
         "text": pa.string(),
         "date": pa.date32(),
         "time": pa.time64("us"),
-        # timez
+        # timez ?
         "timestamp": pa.timestamp("us"),
         "timestamp_ns": pa.timestamp("ns"),
         "timestam_ms": pa.timestamp("ms"),
         "timestamp_s": pa.timestamp("s"),
-        # timestampz
+        # timestampz ?
         "blob": pa.binary(),  # same
     }
 
@@ -210,7 +281,12 @@ def duckdb_to_pyarrow_type(duckdb_type: dtyp.DuckDBPyType) -> pa.DataType:
         fields = {k: duckdb_to_pyarrow_type(v) for k, v in duckdb_type.children}
         return pa.struct(fields)
 
+    # fixed-length-tuple?
     raise ValueError(f"Unsupported DuckDB type: {duckdb_type}")
+
+
+DuckAccessor.register_accessor("dt", DuckDatetimeAccessor)
+DuckAccessor.register_accessor("str", DuckStringAccessor)
 
 
 @property  # type:ignore
@@ -218,4 +294,4 @@ def ak_property(self):
     return DuckAccessor(self)
 
 
-duckdb.DuckDBPyRelation.ak = ak_property  # Ray has no Series
+duckdb.DuckDBPyRelation.ak = ak_property  # Duck has no Series
