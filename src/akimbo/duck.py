@@ -1,4 +1,5 @@
 import functools
+import operator
 import uuid
 
 import awkward as ak
@@ -74,11 +75,13 @@ class DuckAccessor(Accessor):
     def to_output(self, data=None):
         import pandas as pd
 
-        data = self.to_arrow(data or self._obj).to_pandas(types_mapper=pd.ArrowDtype)
-        if list(data.columns) == ["_ak_series_"]:
-            data = data["_ak_series_"]
-        elif list(data.columns) == ["_ak_dataframe_"]:
-            data = data["_ak_dataframe_"].ak.unpack()
+        data = self.to_arrow(data or self._obj)
+        if data.column_names == ["_ak_series_"]:
+            data = data["_ak_series_"].to_pandas(types_mapper=pd.ArrowDtype)
+        elif data.column_names == ["_ak_dataframe_"]:
+            data = (
+                data["_ak_dataframe_"].to_pandas(types_mapper=pd.ArrowDtype).ak.unpack()
+            )
         return data
 
     def __getattr__(self, item: str) -> callable:
@@ -96,7 +99,10 @@ class DuckAccessor(Accessor):
                 func0 = None
 
             def f(batch: pa.ChunkedArray) -> pa.Table:
-                arr = ak.from_arrow(batch)
+                # length 0 indicates this is a test run, and we want to know the output type: series/dataframe
+                ret_type = len(batch) == 0
+                # fixes bug: from_arrow fails on ChunkedArray with zero length
+                arr = ak.from_arrow(batch if len(batch) else batch.chunks[0])
                 arr0 = arr
                 if any(isinstance(_, str) and _ == "_ak_other_" for _ in inargs):
                     # binary input
@@ -111,15 +117,11 @@ class DuckAccessor(Accessor):
                     inargs0 = [other if str(_) == "_ak_other_" else _ for _ in inargs]
                 else:
                     inargs0 = inargs
-                if arr.fields == ["_ak_dataframe_"]:
-                    arr = arr["_ak_dataframe_"]
-                if arr.layout.is_option:
-                    # A whole row cannot be NULL
-                    arr = ak.Array(arr.layout.content)
                 if arr.fields == ["_ak_series_"]:
                     arr = arr["_ak_series_"]
-                if where:
-                    arr = arr[where]
+                elif arr.layout.is_option:
+                    # A whole row cannot be NULL
+                    arr = ak.Array(arr.layout.content)
 
                 if callable(func0):
                     func = func0
@@ -136,17 +138,20 @@ class DuckAccessor(Accessor):
                 out = func(*args, *inargs0, **kwargs)
                 if where:
                     out = ak.with_field(arr0, out, where)
-                if not out.layout.is_record:
+                outtype = "dataframe" if out.layout.is_record else "series"
+                if len(out.fields) != 1:
                     out = ak.Array({"_ak_series_": out})
-                elif len(out.fields) != 1:
-                    out = ak.Array({"_ak_dataframe_": out})
-                return ak.to_arrow_table(
+                out = ak.to_arrow_table(
                     out,
                     extensionarray=False,
                     list_to32=True,
                     string_to32=True,
                     bytestring_to32=True,
                 )
+                # must return one-column table
+                if ret_type:
+                    return out, outtype
+                return out
 
             f.__name__ = item.__name__ if callable(item) else item
 
@@ -166,52 +171,32 @@ class DuckAccessor(Accessor):
                 obj = self._obj
 
             if len(obj.dtypes) > 1:
-                name = "_ak_dataframe_"
-                obj = self.pack(name=name)  # no-compute operation
-            else:
-                name = "_ak_series_"
+                obj = (
+                    self.pack()
+                )  # no-compute operation, but input has to be a single column
 
             arrow_type = pa.schema(
                 [(obj.columns[0], duckdb_to_pyarrow_type(obj.dtypes[0]))]
             )
             arr = pa.table([[]], schema=arrow_type)
-            out1 = f(arr)  # noqa ; used implicitly in next line
+            out1, outtype = f(arr[obj.columns[0]])  # ; used implicitly in next line
+
             out2 = duckdb.sql("SELECT * FROM out1").dtypes[0]
-            fname = f"{item}_{uuid.uuid4().hex}"
+            fname = f"{item.__name__ if hasattr(item, '__name__') else item}_{uuid.uuid4().hex}"
             duckdb.create_function(
                 fname, f, obj.types, out2, type=duckdb.functional.PythonUDFType.ARROW
             )
             # this operates on the one known column, so in the function the column
             # has been normalised out
-            result = duckdb.sql(f"SELECT {fname}({obj.columns[0]}) as {name} FROM obj")
+            result = duckdb.sql(
+                f"SELECT {fname}({obj.columns[0]}) as _ak_{outtype}_ FROM obj"
+            )
             return result
 
         return select
 
     def __getitem__(self, item):
-        def f(batch):
-            arr = ak.from_arrow(batch)
-            arr2 = arr.__getitem__(item)
-            if not arr2.fields:
-                arr2 = ak.Array({"_ak_series_": arr2})
-            return ak.to_arrow_table(
-                arr2,
-                extensionarray=False,
-                list_to32=True,
-                string_to32=True,
-                bytestring_to32=True,
-            )
-
-        arrow_type = self._obj.schema().base_schema
-        if not isinstance(arrow_type, pa.Schema):
-            # TODO: fix, for data via from_pandas or from_numpy
-            raise ValueError("Use arrow types")
-        arr = pa.table([[]] * len(arrow_type), schema=arrow_type)
-        out1 = f(arr)
-        out_schema = pa.table(out1).schema
-        result = self._obj.map_batches(f, zero_copy_batch=True, batch_format="pyarrow")
-        result._plan.cache_schema(out_schema)
-        return result
+        return self.__getattr__(operator.getitem)(item)
 
     def pack(self, name="_ak_series_"):
         obj = self._obj
