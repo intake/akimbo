@@ -147,6 +147,6 @@ def test_apply_numba(df):
         f(data, builder)
         return builder.snapshot()
 
-    out = df.ak.apply(f2, where="x")
+    out = df.ak.apply(f2)
     result = out.ak.to_output()
     assert result.ak.tolist() == [6, None] * 100

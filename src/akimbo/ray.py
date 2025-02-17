@@ -224,7 +224,7 @@ class RayAccessor(Accessor):
         return self.__getattr__(f)(*others, **kwargs)
 
     def apply(self, fn: Callable, *others, where=None, **kwargs):
-        return self.__getattr__(fn)(*others, **kwargs)
+        return self.__getattr__(fn)(*others, where=where, **kwargs)
 
     @classmethod
     def _create_op(cls, op):
