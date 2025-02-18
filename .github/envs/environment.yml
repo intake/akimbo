@@ -3,6 +3,7 @@ channels:
   - conda-forge
 dependencies:
   - dask-core
+  - python-duckdb
   - pandas
   - polars
   - pyarrow >=15

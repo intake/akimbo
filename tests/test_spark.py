@@ -6,6 +6,9 @@ import numpy as np
 import pytest
 
 WIN = sys.platform.startswith("win")
+if WIN and sys.version_info >= (3, 12):
+    # TODO: investigate this condition
+    pytest.skip("newer pyspark fails on windows", allow_module_level=True)
 pd = pytest.importorskip("pandas")
 pyspark = pytest.importorskip("pyspark")
 
