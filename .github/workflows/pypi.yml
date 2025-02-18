@@ -30,8 +30,8 @@ jobs:
         environment-file: .github/envs/environment.yml
         activate-environment: test-environment
     - name: install-pyspark
-      if: ${{matrix.python-version}} == "3.10" OR ${{matrix.python-version}} == "3.11"
-      shell: bach -l {0}
+      if: (${{matrix.python-version}} == "3.10") || (${{matrix.python-version}} == "3.11")
+      shell: bash -l {0}
       run: |
         conda install openjdk==20 pyspark
     - name: install
