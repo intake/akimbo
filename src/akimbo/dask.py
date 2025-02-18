@@ -43,9 +43,9 @@ class DaskAwkwardAccessor(AkAccessor):
     def to_dask_awkward(self):
         """Convert to dask-awkard.Array object
 
-        This make a s single complex awkward array type out of one or more columns.
-        You would do this, in order to use dask-awkward's more advanced inter-
-        partition aggregations and optimisation.
+        This make a single complex awkward array type out of one or more columns.
+        You would do this, in order to use dask-awkward's more advanced inter
+        partition aggregations and column/buffer IO optimisation.
         See https://dask-awkward.readthedocs.io/
 
         c.f., dask_awkward.to_dataframe

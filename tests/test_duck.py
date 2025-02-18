@@ -1,33 +1,27 @@
-import sys
-
 import awkward as ak
 import numpy as np
+import pandas as pd
 import pytest
 
-WIN = sys.platform.startswith("win")
-pd = pytest.importorskip("pandas")
-ray = pytest.importorskip("ray")
+duckdb = pytest.importorskip("duckdb")
+import akimbo.duck  # noqa
 
-pytest.importorskip("akimbo.pandas")
-pytest.importorskip("akimbo.ray")
+
+@pytest.fixture(scope="module")
+def db():
+    conn = duckdb.connect(":default:")
+    yield conn
+    conn.close()
+
 
 x = pd.Series([[[1, 2, 3], [], [3, 4, None]], [None]] * 100).ak.to_output()
 y = pd.Series([["hey", None], ["hi", "ho"]] * 100).ak.to_output()
 
 
-@pytest.fixture(scope="module")
-def rayc():
-    context = ray.init()
-    yield context
-    context.disconnect()
-
-
 @pytest.fixture()
-def df(rayc, tmpdir):
-    import ray.data
-
+def df(db, tmpdir):
     pd.DataFrame({"x": x, "y": y}).to_parquet(f"{tmpdir}/a.parquet")
-    return ray.data.read_parquet(f"{tmpdir}/a.parquet", override_num_blocks=2)
+    return db.from_parquet(f"{tmpdir}/a.parquet")
 
 
 def test_unary(df):
@@ -45,26 +39,6 @@ def test_unary(df):
     result = out.ak.to_output()
     expected = y.ak.str.upper()
     assert result.y.tolist() == expected.tolist()
-
-
-@pytest.mark.skipif(WIN, reason="may not have locale on windows")
-def test_dt(rayc):
-    data = pd.DataFrame(
-        {
-            "_ak_series_": pd.Series(
-                pd.date_range(start="2024-01-01", end="2024-01-02", freq="h")
-            )
-        }
-    )
-    df = ray.data.from_arrow(data.ak.arrow)
-    out = df.ak.dt.strftime()
-    result = out.ak.to_output()
-
-    assert result[0] == "2024-01-01T00:00:00.000000000"  # defaults to ns
-
-    out = df.ak.dt.hour()
-    result = out.ak.to_output()
-    assert set(result) == set(range(24))
 
 
 def test_select(df):
@@ -109,9 +83,9 @@ def test_ufunc_where(df):
     assert result.x.tolist() == expected.tolist()
 
 
-def test_overload(rayc):
+def test_overload(db):
     x = pd.Series([1, 2, 3])
-    df = ray.data.from_arrow(pd.DataFrame(x, columns=["_ak_series_"]).ak.arrow)
+    df = db.from_arrow(pd.DataFrame(x, columns=["_ak_series_"]).ak.arrow)
 
     out = df.ak + 1  # scalar
     result = out.ak.to_output()
@@ -129,6 +103,7 @@ def test_overload(rayc):
 def test_dir(df):
     assert "flatten" in dir(df.ak)
     assert "upper" in dir(df.ak.str)
+    assert "flatten" not in dir(df.ak.str)
 
 
 def test_apply_numba(df):
@@ -137,10 +112,17 @@ def test_apply_numba(df):
     @numba.njit()
     def f(data: ak.Array, builder: ak.ArrayBuilder) -> None:
         for i, item in enumerate(data.x):
+            builder.begin_list()
             if item[0] is None:
                 builder.append(None)
             else:
                 builder.append(item[0][2] + item[2][0])  # always 6
+            builder.end_list()
+        if i == 0:
+            builder.begin_list()
+            builder.append(None)
+            builder.append(1)
+            builder.end_list()
 
     def f2(data):
         builder = ak.ArrayBuilder()
@@ -149,4 +131,4 @@ def test_apply_numba(df):
 
     out = df.ak.apply(f2)
     result = out.ak.to_output()
-    assert result.ak.tolist() == [6, None] * 100
+    assert result.ak.tolist() == [[6], [None]] * 100
