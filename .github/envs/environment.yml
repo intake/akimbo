@@ -2,7 +2,7 @@ name: test-environment
 channels:
   - conda-forge
 dependencies:
-  - dask
+  - dask-core
   - pandas
   - polars
   - pyarrow >=15
