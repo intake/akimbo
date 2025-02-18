@@ -5,7 +5,7 @@ dependencies:
   - dask >=2025
   - pandas
   - polars
-  - pyspark
+  # - pyspark
   - pyarrow >=15
   - numpy
   - pytest
