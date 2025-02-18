@@ -5,7 +5,6 @@ dependencies:
   - dask >=2025
   - pandas
   - polars
-  # - pyspark
   - pyarrow >=15
   - numpy
   - pytest
@@ -13,7 +12,6 @@ dependencies:
   - numba
   - awkward
   - distributed
-  - openjdk ==20
   - pip
   - pip:
       - ray[data]

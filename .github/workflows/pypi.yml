@@ -32,7 +32,8 @@ jobs:
     - name: install-pyspark
       if: ${{matrix.python-version}} == "3.10" OR ${{matrix.python-version}} == "3.11"
       shell: bach -l {0}
-      run: pip install pyspark
+      run: |
+        conda install openjdk==20 pyspark
     - name: install
       shell: bash -l {0}
       run: |
