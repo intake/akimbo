@@ -2,7 +2,6 @@ name: test-environment
 channels:
   - conda-forge
 dependencies:
-  - python ==3.12
   - dask-core
   - python-duckdb
   - pandas
