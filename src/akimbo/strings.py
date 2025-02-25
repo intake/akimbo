@@ -5,8 +5,8 @@ import functools
 import awkward as ak
 import pyarrow.compute as pc
 
-from akimbo.apply_tree import dec
-from akimbo.mixin import Accessor
+from akimbo.apply_tree import dec, run_with_transform
+from akimbo.mixin import EagerAccessor, LazyAccessor
 from akimbo.utils import match_string
 
 
@@ -113,4 +113,23 @@ class StringAccessor:
         return sorted(methods + ["strptime"])
 
 
-Accessor.register_accessor("str", StringAccessor)
+class LazyStringAccessor(StringAccessor):
+    def __init__(self, *_):
+        pass
+
+    def __getattr__(self, attr: str) -> callable:
+        attr = self.method_name(attr)
+        return getattr(ak.str, attr)
+
+    @property
+    def strptime(self):
+        @functools.wraps(strptime)
+        def run(*arrs, **kwargs):
+            arr, *other = arrs
+            return run_with_transform(arr, strptime, match_string, **kwargs)
+
+        return run
+
+
+EagerAccessor.register_accessor("str", StringAccessor)
+LazyAccessor.register_accessor("str", LazyStringAccessor)

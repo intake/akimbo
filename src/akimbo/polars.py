@@ -4,12 +4,12 @@ import polars as pl
 import pyarrow as pa
 
 from akimbo.apply_tree import match_any
-from akimbo.mixin import Accessor
+from akimbo.mixin import EagerAccessor, LazyAccessor
 
 
 @pl.api.register_series_namespace("ak")
 @pl.api.register_dataframe_namespace("ak")
-class PolarsAwkwardAccessor(Accessor):
+class PolarsAwkwardAccessor(EagerAccessor):
     """Perform awkward operations on a polars series or dataframe
 
     This is for *eager* operations. A Lazy version may eventually be made.
@@ -32,7 +32,7 @@ class PolarsAwkwardAccessor(Accessor):
 
 
 @pl.api.register_lazyframe_namespace
-class LazyPolarsAwkwardAccessor(Accessor):
+class LazyPolarsAwkwardAccessor(LazyAccessor):
     dataframe_type = pl.LazyFrame
     series_type = None  # lazy is never series
 

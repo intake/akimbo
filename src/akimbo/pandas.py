@@ -5,12 +5,12 @@ import pandas as pd
 import pyarrow
 import pyarrow as pa
 
-from akimbo.mixin import Accessor
+from akimbo.mixin import EagerAccessor
 
 
 @pd.api.extensions.register_series_accessor("ak")
 @pd.api.extensions.register_dataframe_accessor("ak")
-class PandasAwkwardAccessor(Accessor):
+class PandasAwkwardAccessor(EagerAccessor):
     """Perform awkward operations on pandas data
 
     Nested structures are handled using arrow as the

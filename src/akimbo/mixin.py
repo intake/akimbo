@@ -127,10 +127,9 @@ class ArithmeticMixin:
         cls._add_comparison_ops()
 
 
-class Accessor(ArithmeticMixin):
+class EagerAccessor(ArithmeticMixin):
     """Bring the awkward API to dataframes and series"""
 
-    aggregations = True  # False means data is partitioned
     series_type = ()
     dataframe_type = ()
     subaccessors = {}
@@ -140,7 +139,7 @@ class Accessor(ArithmeticMixin):
         self._behavior = behavior
 
     def __call__(self, *args, behavior=None, **kwargs):
-        return Accessor(self._obj, behavior=behavior)
+        return EagerAccessor(self._obj, behavior=behavior)
 
     cast = dec(pc.cast)
 
@@ -505,3 +504,11 @@ class Accessor(ArithmeticMixin):
     def __init_subclass__(cls, **kwargs):
         # auto add methods to all derivative classes
         cls._add_all()
+
+
+class LazyAccessor(EagerAccessor):
+    subaccessors = EagerAccessor.subaccessors.copy()
+
+    def __init__(self, obj, subaccessor=None, behavior=None):
+        super().__init__(obj, behavior)
+        self.subaccessor = subaccessor

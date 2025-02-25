@@ -8,7 +8,7 @@ from dask.dataframe.extensions import (
     register_series_accessor,
 )
 
-from akimbo.mixin import Accessor as AkAccessor
+from akimbo.mixin import EagerAccessor as AkAccessor
 from akimbo.mixin import df_methods, series_methods
 from akimbo.pandas import PandasAwkwardAccessor
 

@@ -1,4 +1,3 @@
-import functools
 from typing import Callable, Iterable
 
 import awkward as ak
@@ -8,72 +7,21 @@ import pyspark
 from pyspark.sql.pandas.types import from_arrow_schema, to_arrow_schema
 
 from akimbo.apply_tree import run_with_transform
-from akimbo.datetimes import DatetimeAccessor
-from akimbo.datetimes import match as match_dt
-from akimbo.mixin import Accessor, match_any, numeric
+from akimbo.mixin import LazyAccessor, match_any, numeric
 from akimbo.pandas import pd
-from akimbo.strings import StringAccessor, match_string, strptime
 from akimbo.utils import to_ak_layout
 
 sdf = pyspark.sql.DataFrame
 
 
-class SparkStringAccessor(StringAccessor):
-    def __init__(self, *_):
-        pass
-
-    def __getattr__(self, attr: str) -> callable:
-        attr = self.method_name(attr)
-        return getattr(ak.str, attr)
-
-    @property
-    def strptime(self):
-        @functools.wraps(strptime)
-        def run(*arrs, **kwargs):
-            arr, *other = arrs
-            return run_with_transform(arr, strptime, match_string, **kwargs)
-
-        return run
-
-
-class SparkDatetimeAccessor:
-    def __init__(self, *_):
-        pass
-
-    def __getattr__(self, item):
-        if item in dir(DatetimeAccessor):
-            fn = getattr(DatetimeAccessor, item)
-            if hasattr(fn, "__wrapped__"):
-                func = fn.__wrapped__  # arrow function
-            else:
-                raise AttributeError
-        else:
-            raise AttributeError
-
-        @functools.wraps(func)
-        def run(*arrs, **kwargs):
-            arr, *other = arrs
-            return run_with_transform(arr, func, match_dt, **kwargs)
-
-        return run
-
-    def __dir__(self):
-        return dir(DatetimeAccessor)
-
-
-class SparkAccessor(Accessor):
+class SparkAccessor(LazyAccessor):
     """Operations on pyspark dataframes.
 
     This is a lazy backend, and operates partition-wise. It predicts the schema
     of each operation by running with an empty dataframe of the correct type.
     """
 
-    subaccessors = Accessor.subaccessors.copy()
     dataframe_type = sdf
-
-    def __init__(self, obj, subaccessor=None, behavior=None):
-        super().__init__(obj, behavior)
-        self.subaccessor = subaccessor
 
     def to_arrow(self, data) -> pa.Table:
         # collects data locally
@@ -239,10 +187,6 @@ class SparkAccessor(Accessor):
         if self.subaccessor is not None:
             return dir(self.subaccessors[self.subaccessor](self))
         return super().__dir__()
-
-
-SparkAccessor.register_accessor("dt", SparkDatetimeAccessor)
-SparkAccessor.register_accessor("str", SparkStringAccessor)
 
 
 def concat_columns_zip_index(df1: sdf, df2: sdf) -> sdf:

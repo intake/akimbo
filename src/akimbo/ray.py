@@ -1,4 +1,3 @@
-import functools
 from typing import Callable, Iterable
 
 import awkward as ak
@@ -8,57 +7,11 @@ import ray
 import ray.data as rd
 
 from akimbo.apply_tree import run_with_transform
-from akimbo.datetimes import DatetimeAccessor
-from akimbo.datetimes import match as match_dt
-from akimbo.mixin import Accessor, match_any, numeric
-from akimbo.strings import StringAccessor, match_string, strptime
+from akimbo.mixin import LazyAccessor, match_any, numeric
 from akimbo.utils import to_ak_layout
 
 
-class RayStringAccessor(StringAccessor):
-    def __init__(self, *_):
-        pass
-
-    def __getattr__(self, attr: str) -> callable:
-        attr = self.method_name(attr)
-        return getattr(ak.str, attr)
-
-    @property
-    def strptime(self):
-        @functools.wraps(strptime)
-        def run(*arrs, **kwargs):
-            arr, *other = arrs
-            return run_with_transform(arr, strptime, match_string, **kwargs)
-
-        return run
-
-
-class RayDatetimeAccessor:
-    def __init__(self, *_):
-        pass
-
-    def __getattr__(self, item):
-        if item in dir(DatetimeAccessor):
-            fn = getattr(DatetimeAccessor, item)
-            if hasattr(fn, "__wrapped__"):
-                func = fn.__wrapped__  # arrow function
-            else:
-                raise AttributeError
-        else:
-            raise AttributeError
-
-        @functools.wraps(func)
-        def run(*arrs, **kwargs):
-            arr, *other = arrs
-            return run_with_transform(arr, func, match_dt, **kwargs)
-
-        return run
-
-    def __dir__(self):
-        return dir(DatetimeAccessor)
-
-
-class RayAccessor(Accessor):
+class RayAccessor(LazyAccessor):
     """Operations on ray.data.Dataset dataframes.
 
     This is a lazy backend, and operates partition-wise. It predicts the schema
@@ -67,11 +20,6 @@ class RayAccessor(Accessor):
 
     dataframe_type = rd.Dataset
     series_type = None  # only has "dataframe like"
-    subaccessors = Accessor.subaccessors.copy()
-
-    def __init__(self, obj, subaccessor=None, behavior=None):
-        super().__init__(obj, behavior)
-        self.subaccessor = subaccessor
 
     def to_arrow(self, data: rd.Dataset) -> pa.Table:
         batches = ray.get(data.to_arrow_refs())
@@ -241,10 +189,6 @@ class RayAccessor(Accessor):
         if self.subaccessor is not None:
             return dir(self.subaccessors[self.subaccessor](self))
         return super().__dir__()
-
-
-RayAccessor.register_accessor("dt", RayDatetimeAccessor)
-RayAccessor.register_accessor("str", RayStringAccessor)
 
 
 def concat_columns_zip_index(df1: rd.Dataset, df2: rd.Dataset) -> rd.Dataset:

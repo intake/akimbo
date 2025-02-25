@@ -3,8 +3,8 @@ import functools
 import awkward as ak
 import pyarrow.compute as pc
 
-from akimbo.apply_tree import dec
-from akimbo.mixin import Accessor
+from akimbo.apply_tree import dec, run_with_transform
+from akimbo.mixin import EagerAccessor, LazyAccessor
 
 
 def match(*layouts):
@@ -76,4 +76,30 @@ def _make_unit_compatible(array):
     return array
 
 
-Accessor.register_accessor("dt", DatetimeAccessor)
+class LazyDatetimeAccessor:
+    def __init__(self, *_):
+        pass
+
+    def __getattr__(self, item):
+        if item in dir(DatetimeAccessor):
+            fn = getattr(DatetimeAccessor, item)
+            if hasattr(fn, "__wrapped__"):
+                func = fn.__wrapped__  # arrow function
+            else:
+                raise AttributeError
+        else:
+            raise AttributeError
+
+        @functools.wraps(func)
+        def run(*arrs, **kwargs):
+            arr, *other = arrs
+            return run_with_transform(arr, func, match, **kwargs)
+
+        return run
+
+    def __dir__(self):
+        return dir(DatetimeAccessor)
+
+
+EagerAccessor.register_accessor("dt", DatetimeAccessor)
+LazyAccessor.register_accessor("dt", LazyDatetimeAccessor)

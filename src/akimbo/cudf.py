@@ -23,7 +23,7 @@ from akimbo.ak_from_cudf import cudf_to_awkward as from_cudf
 from akimbo.apply_tree import dec, leaf
 from akimbo.datetimes import DatetimeAccessor
 from akimbo.datetimes import match as match_t
-from akimbo.mixin import Accessor
+from akimbo.mixin import EagerAccessor
 from akimbo.strings import StringAccessor
 
 
@@ -106,7 +106,7 @@ for meth in dir(DatetimeColumn):
         setattr(CudfDatetimeAccessor, meth, dec(func=f, match=match_t, inmode="ak"))
 
 
-class CudfAwkwardAccessor(Accessor):
+class CudfAwkwardAccessor(EagerAccessor):
     """Operations on cuDF dataframes on the GPU.
 
     Data are kept in GPU memory and use views rather than copies where
