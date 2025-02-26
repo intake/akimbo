@@ -119,14 +119,18 @@ class LazyStringAccessor(StringAccessor):
 
     def __getattr__(self, attr: str) -> callable:
         attr = self.method_name(attr)
+        if attr == "encode":
+            return _encode
         return getattr(ak.str, attr)
 
     @property
     def strptime(self):
         @functools.wraps(strptime)
         def run(*arrs, **kwargs):
-            arr, *other = arrs
-            return run_with_transform(arr, strptime, match_string, **kwargs)
+            arr, *others = arrs
+            return run_with_transform(
+                arr, strptime, match_string, others=others, **kwargs
+            )
 
         return run
 

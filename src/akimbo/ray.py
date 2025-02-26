@@ -1,14 +1,9 @@
-from typing import Callable, Iterable
-
 import awkward as ak
-import numpy as np
 import pyarrow as pa
 import ray
 import ray.data as rd
 
-from akimbo.apply_tree import run_with_transform
-from akimbo.mixin import LazyAccessor, match_any, numeric
-from akimbo.utils import to_ak_layout
+from akimbo.mixin import LazyAccessor
 
 
 class RayAccessor(LazyAccessor):
@@ -119,76 +114,6 @@ class RayAccessor(LazyAccessor):
             return result
 
         return select
-
-    def __array_ufunc__(self, *args, where=None, out=None, **kwargs):
-        # includes operator overload like df.ak + 1
-        ufunc, call, inputs, *callargs = args
-        if out is not None or call != "__call__":
-            raise NotImplementedError
-
-        return self.__getattr__(ufunc)(*callargs, where=where, **kwargs)
-
-    def __getitem__(self, item) -> rd.dataset:
-        def f(batch):
-            arr = ak.from_arrow(batch)
-            arr2 = arr.__getitem__(item)
-            if not arr2.fields:
-                arr2 = ak.Array({"_ak_series_": arr2})
-            return ak.to_arrow_table(
-                arr2,
-                extensionarray=False,
-                list_to32=True,
-                string_to32=True,
-                bytestring_to32=True,
-            )
-
-        arrow_type = self._obj.schema().base_schema
-        if not isinstance(arrow_type, pa.Schema):
-            # TODO: fix, for data via from_pandas or from_numpy
-            raise ValueError("Use arrow types")
-        arr = pa.table([[]] * len(arrow_type), schema=arrow_type)
-        out1 = f(arr)
-        out_schema = pa.table(out1).schema
-        result = self._obj.map_batches(f, zero_copy_batch=True, batch_format="pyarrow")
-        # this is what .schema(fetch_if_missing=True) does, but we already know
-        # the value without compute
-        result._plan.cache_schema(out_schema)
-        return result
-
-    def transform(
-        self,
-        fn: callable,
-        *others,
-        where=None,
-        match=match_any,
-        inmode="array",
-        **kwargs,
-    ):
-        def f(arr, *others, **kwargs):
-            return run_with_transform(
-                arr, fn, match=match, others=others, inmode=inmode, **kwargs
-            )
-
-        return self.__getattr__(f)(*others, **kwargs)
-
-    def apply(self, fn: Callable, *others, where=None, **kwargs):
-        return self.__getattr__(fn)(*others, where=where, **kwargs)
-
-    @classmethod
-    def _create_op(cls, op):
-        def run(self, *args, **kwargs):
-            args = [
-                to_ak_layout(_) if isinstance(_, (str, int, float, np.number)) else _
-                for _ in args
-            ]
-            return self.transform(op, *args, match=numeric)
-
-        return run
-
-    def __dir__(self) -> Iterable[str]:
-        if self.subaccessor is not None:
-            return dir(self.subaccessors[self.subaccessor](self))
-        return super().__dir__()
 
 
 def concat_columns_zip_index(df1: rd.Dataset, df2: rd.Dataset) -> rd.Dataset:

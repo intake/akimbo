@@ -512,3 +512,58 @@ class LazyAccessor(EagerAccessor):
     def __init__(self, obj, subaccessor=None, behavior=None):
         super().__init__(obj, behavior)
         self.subaccessor = subaccessor
+
+    @classmethod
+    def _create_op(cls, op):
+        def run(self, *args, **kwargs):
+            args = [
+                to_ak_layout(_) if isinstance(_, (str, int, float, np.number)) else _
+                for _ in args
+            ]
+            return self.transform(op, *args, match=numeric)
+
+        return run
+
+    def __getitem__(self, item):
+        return self.__getattr__(operator.getitem)(item)
+
+    def __array_ufunc__(self, *args, where=None, out=None, **kwargs):
+        # includes operator overload like df.ak + 1
+        ufunc, call, inputs, *callargs = args
+        if out is not None or call != "__call__":
+            raise NotImplementedError
+
+        return self.__getattr__(ufunc)(*callargs, where=where, **kwargs)
+
+    def __dir__(self) -> Iterable[str]:
+        if self.subaccessor is not None:
+            return dir(self.subaccessors[self.subaccessor](self))
+        return super().__dir__()
+
+    def transform(
+        self,
+        fn: callable,
+        *others,
+        where=None,
+        match=match_any,
+        inmode="array",
+        **kwargs,
+    ):
+        def f(arr, *others, **kwargs):
+            return run_with_transform(
+                arr, fn, match=match, others=others, inmode=inmode, **kwargs
+            )
+
+        return self.__getattr__(f)(*others, **kwargs)
+
+    def apply(self, fn: Callable, *others, where=None, **kwargs):
+        return self.__getattr__(fn)(*others, **kwargs)
+
+    def pack(self):
+        raise NotImplementedError
+
+    def unpack(self):
+        raise NotImplementedError
+
+    def __getattr__(self, item):
+        raise NotImplementedError

@@ -1,15 +1,11 @@
-import operator
 import uuid
 
 import awkward as ak
 import duckdb
 import duckdb.duckdb.typing as dtyp
-import numpy as np
 import pyarrow as pa
 
-from akimbo.apply_tree import run_with_transform
-from akimbo.mixin import LazyAccessor, match_any, numeric
-from akimbo.utils import to_ak_layout
+from akimbo.mixin import LazyAccessor
 
 
 class DuckAccessor(LazyAccessor):
@@ -147,57 +143,11 @@ class DuckAccessor(LazyAccessor):
 
         return select
 
-    def __getitem__(self, item):
-        return self.__getattr__(operator.getitem)(item)
-
-    def __array_ufunc__(self, *args, where=None, out=None, **kwargs):
-        # includes operator overload like df.ak + 1
-        ufunc, call, inputs, *callargs = args
-        if out is not None or call != "__call__":
-            raise NotImplementedError
-
-        return self.__getattr__(ufunc)(*callargs, where=where, **kwargs)
-
     def pack(self):
         return pack(self._obj)
 
     def unpack(self):
         return unpack(self._obj)
-
-    def transform(
-        self,
-        fn: callable,
-        *others,
-        where=None,
-        match=match_any,
-        inmode="array",
-        **kwargs,
-    ):
-        def f(arr, *others, **kwargs):
-            return run_with_transform(
-                arr, fn, match=match, others=others, inmode=inmode, **kwargs
-            )
-
-        return self.__getattr__(f)(*others, **kwargs)
-
-    def apply(self, fn, *others, where=None, **kwargs):
-        return self.__getattr__(fn)(*others, where=where, **kwargs)
-
-    @classmethod
-    def _create_op(cls, op):
-        def run(self, *args, **kwargs):
-            args = [
-                to_ak_layout(_) if isinstance(_, (str, int, float, np.number)) else _
-                for _ in args
-            ]
-            return self.transform(op, *args, match=numeric)
-
-        return run
-
-    def __dir__(self):
-        if self.subaccessor is not None:
-            return dir(self.subaccessors[self.subaccessor](self))
-        return super().__dir__()
 
 
 def pack(obj, name="_ak_series_"):
