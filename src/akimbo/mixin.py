@@ -171,7 +171,7 @@ class EagerAccessor(ArithmeticMixin):
         struct = rec_list_swap(akarr2)
         final = ak.with_field(akarr[cols], struct, outname)
 
-        return self.to_output(final)
+        return self.to_output(final).ak.unpack()
 
     @classmethod
     def _create_op(cls, op):
@@ -266,10 +266,11 @@ class EagerAccessor(ArithmeticMixin):
             return other.array
         return other
 
-    def __getattr__(self, item):
+    def __getattr__(self, item, frame=False):
         if not self.subaccessor and item in self.subaccessors:
             return type(self)(self._obj, subaccessor=item)
         func, args = self._pre(item)
+        frame = isinstance(self._obj, self.dataframe_type)
 
         @functools.wraps(func)
         def f(*others, where=None, **kwargs):
@@ -285,6 +286,8 @@ class EagerAccessor(ArithmeticMixin):
             if isinstance(ak_arr, ak.Array):
                 if where:
                     ak_arr = ak.with_field(arr0, ak_arr, where)
+                if frame and ak_arr.fields == ar0[0].fields:
+                    return self.to_output(ak_arr).ak.unpack()
                 return self.to_output(ak_arr)
             return ak_arr
 
