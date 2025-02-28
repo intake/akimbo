@@ -1,74 +1,16 @@
-import functools
-import operator
 import uuid
 
 import awkward as ak
 import duckdb
 import duckdb.duckdb.typing as dtyp
-import numpy as np
 import pyarrow as pa
 
-from akimbo.apply_tree import run_with_transform
-from akimbo.datetimes import DatetimeAccessor
-from akimbo.datetimes import match as match_dt
-from akimbo.mixin import Accessor, match_any, numeric
-from akimbo.strings import StringAccessor, match_string, strptime
-from akimbo.utils import to_ak_layout
+from akimbo.mixin import LazyAccessor
 
 
-# https://duckdb.org/docs/sql/query_syntax/from#positional-joins
-# SELECT * FROM df1 POSITIONAL JOIN df2;
-class DuckStringAccessor(StringAccessor):
-    def __init__(self, *_):
-        pass
-
-    def __getattr__(self, attr: str) -> callable:
-        attr = self.method_name(attr)
-        return getattr(ak.str, attr)
-
-    @property
-    def strptime(self):
-        @functools.wraps(strptime)
-        def run(*arrs, **kwargs):
-            arr, *other = arrs
-            return run_with_transform(arr, strptime, match_string, **kwargs)
-
-        return run
-
-
-class DuckDatetimeAccessor:
-    def __init__(self, *_):
-        pass
-
-    def __getattr__(self, item):
-        if item in dir(DatetimeAccessor):
-            fn = getattr(DatetimeAccessor, item)
-            if hasattr(fn, "__wrapped__"):
-                func = fn.__wrapped__  # arrow function
-            else:
-                raise AttributeError
-        else:
-            raise AttributeError
-
-        @functools.wraps(func)
-        def run(*arrs, **kwargs):
-            arr, *other = arrs
-            return run_with_transform(arr, func, match_dt, **kwargs)
-
-        return run
-
-    def __dir__(self):
-        return dir(DatetimeAccessor)
-
-
-class DuckAccessor(Accessor):
+class DuckAccessor(LazyAccessor):
     dataframe_type = duckdb.DuckDBPyRelation
     series_type = None  # only has "dataframe like"
-    subaccessors = Accessor.subaccessors.copy()
-
-    def __init__(self, obj, subaccessor=None, behavior=None):
-        super().__init__(obj, behavior)
-        self.subaccessor = subaccessor
 
     @classmethod
     def to_arrow(cls, data: duckdb.DuckDBPyRelation):
@@ -201,57 +143,11 @@ class DuckAccessor(Accessor):
 
         return select
 
-    def __getitem__(self, item):
-        return self.__getattr__(operator.getitem)(item)
-
-    def __array_ufunc__(self, *args, where=None, out=None, **kwargs):
-        # includes operator overload like df.ak + 1
-        ufunc, call, inputs, *callargs = args
-        if out is not None or call != "__call__":
-            raise NotImplementedError
-
-        return self.__getattr__(ufunc)(*callargs, where=where, **kwargs)
-
     def pack(self):
         return pack(self._obj)
 
     def unpack(self):
         return unpack(self._obj)
-
-    def transform(
-        self,
-        fn: callable,
-        *others,
-        where=None,
-        match=match_any,
-        inmode="array",
-        **kwargs,
-    ):
-        def f(arr, *others, **kwargs):
-            return run_with_transform(
-                arr, fn, match=match, others=others, inmode=inmode, **kwargs
-            )
-
-        return self.__getattr__(f)(*others, **kwargs)
-
-    def apply(self, fn, *others, where=None, **kwargs):
-        return self.__getattr__(fn)(*others, where=where, **kwargs)
-
-    @classmethod
-    def _create_op(cls, op):
-        def run(self, *args, **kwargs):
-            args = [
-                to_ak_layout(_) if isinstance(_, (str, int, float, np.number)) else _
-                for _ in args
-            ]
-            return self.transform(op, *args, match=numeric)
-
-        return run
-
-    def __dir__(self):
-        if self.subaccessor is not None:
-            return dir(self.subaccessors[self.subaccessor](self))
-        return super().__dir__()
 
 
 def pack(obj, name="_ak_series_"):
@@ -271,6 +167,7 @@ def unpack(obj):
 def positional_join(
     df1: duckdb.DuckDBPyRelation, df2: duckdb.DuckDBPyRelation
 ) -> duckdb.DuckDBPyRelation:
+    # https://duckdb.org/docs/sql/query_syntax/from#positional-joins
     inner = ", ".join(
         [f"df1.{c} AS {c}" for c in df2.columns]
         + [f"df2.{c} AS _df2_{c}" for c in df2.columns]
@@ -333,10 +230,6 @@ def duckdb_to_pyarrow_type(duckdb_type: dtyp.DuckDBPyType) -> pa.DataType:
 
     # fixed-length-tuple?
     raise ValueError(f"Unsupported DuckDB type: {duckdb_type}")
-
-
-DuckAccessor.register_accessor("dt", DuckDatetimeAccessor)
-DuckAccessor.register_accessor("str", DuckStringAccessor)
 
 
 @property  # type:ignore
