@@ -117,11 +117,6 @@ class CudfAwkwardAccessor(EagerAccessor):
     dataframe_type = DataFrame
 
     @classmethod
-    def _arrow_to_series(cls, data):
-        # this implies CPU->GPU copy
-        return Series(data)
-
-    @classmethod
     def _to_output(cls, arr):
         if isinstance(arr, ak.Array):
             return ak.to_cudf(arr)

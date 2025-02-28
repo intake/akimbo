@@ -10,20 +10,20 @@ def ak_to_series(ds, backend="pandas", extract=True):
     if backend == "pandas":
         import akimbo.pandas
 
-        s = akimbo.pandas.PandasAwkwardAccessor._to_output(ds)
+        s = akimbo.pandas.PandasAwkwardAccessor(None).to_output(ds)
     elif backend == "polars":
         import akimbo.polars
 
-        s = akimbo.polars.PolarsAwkwardAccessor._to_output(ds)
+        s = akimbo.polars.PolarsAwkwardAccessor(None).to_output(ds)
     elif backend == "dask":
         import akimbo.dask
 
         # TODO: actually don't use this, use dask-awkward, or dask.dataframe
-        s = akimbo.polars.PolarsAwkwardAccessor._to_output(ds)
+        s = akimbo.polars.PolarsAwkwardAccessor(None).to_output(ds)
     elif backend == "cudf":
         import akimbo.cudf
 
-        s = akimbo.cudf.CudfAwkwardAccessor._to_output(ds)
+        s = akimbo.cudf.CudfAwkwardAccessor(None).to_output(ds)
     elif backend in ["ray", "spark"]:
         raise ValueError("Backend only supports dataframes, not series")
 
@@ -172,6 +172,9 @@ def get_avro_schema(
         reader = ReadAvroFT(f, limit_entries=1, debug_forth=False)
         form, length, container = reader.outcontents
     return form
+
+
+# TODO: feather2/arrow format, get schema
 
 
 _jitted = [None]

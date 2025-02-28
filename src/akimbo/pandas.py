@@ -30,13 +30,11 @@ class PandasAwkwardAccessor(EagerAccessor):
             return ak.to_arrow_table(data)
         if isinstance(data, (pyarrow.Array, pyarrow.Table)):
             return data
-        if cls.is_series(data):
+        if isinstance(data, cls.series_type):
+            if getattr(data.dtype, "storage", "") == "pyarrow":
+                return data.array.__arrow_array__()
             return pa.array(data)
         return pa.table(data)
-
-    @classmethod
-    def _arrow_to_series(cls, data):
-        return pd.Series(pd.arrays.ArrowExtensionArray(data))
 
     def to_output(self, data=None):
         # override to apply index

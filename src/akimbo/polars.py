@@ -1,5 +1,6 @@
 from typing import Callable, Dict
 
+import awkward as ak
 import polars as pl
 import pyarrow as pa
 
@@ -19,16 +20,17 @@ class PolarsAwkwardAccessor(EagerAccessor):
     dataframe_type = pl.DataFrame
 
     @classmethod
-    def _arrow_to_series(cls, arr):
-        return pl.from_arrow(arr)
-
-    @classmethod
     def to_arrow(cls, data):
         return data.to_arrow()
 
     def pack(self):
         # polars already implements this directly
         return self._obj.to_struct()
+
+    def to_output(self, data=None):
+        arr = data if data is not None else self._obj
+        pa_arr = ak.to_arrow(arr, extensionarray=False)
+        return pl.from_arrow(pa_arr)
 
 
 @pl.api.register_lazyframe_namespace

@@ -1,19 +1,17 @@
-import functools
-from typing import Callable, Iterable
-
 import awkward as ak
 import dask.dataframe as dd
-from dask.dataframe.extensions import (
+import pandas as pd
+import pyarrow as pa
+from dask.dataframe.accessor import (
     register_dataframe_accessor,
     register_series_accessor,
 )
 
-from akimbo.mixin import EagerAccessor as AkAccessor
-from akimbo.mixin import df_methods, series_methods
+from akimbo.mixin import LazyAccessor
 from akimbo.pandas import PandasAwkwardAccessor
 
 
-class DaskAwkwardAccessor(AkAccessor):
+class DaskAwkwardAccessor(LazyAccessor):
     """Perform awkward operations on a dask series or frame
 
     These operations are lazy, because of how dask works. Note
@@ -31,13 +29,14 @@ class DaskAwkwardAccessor(AkAccessor):
 
     series_type = dd.Series
     dataframe_type = dd.DataFrame
-    aggregations = False  # you need dask-awkward for that
 
     @staticmethod
     def _to_tt(data):
         # self._obj._meta.convert_dtypes(dtype_backend="pyarrow")
         data = data._meta if hasattr(data, "_meta") else data
         arr = PandasAwkwardAccessor.to_arrow(data)
+        if isinstance(arr, pa.ChunkedArray) and len(arr) == 0:
+            arr = arr.combine_chunks()
         return ak.to_backend(ak.from_arrow(arr), "typetracer")
 
     def to_dask_awkward(self):
@@ -57,72 +56,52 @@ class DaskAwkwardAccessor(AkAccessor):
             self._obj.dask, divisions=self._obj.divisions, name=self._obj._name, meta=tt
         )
 
-    @classmethod
-    def _create_op(cls, op):
-        def run(self, *args, **kwargs):
-            try:
-                tt = self._to_tt(self._obj)
-                ar = (
-                    ak.to_backend(ar) if isinstance(ar, (ak.Array, ak.Record)) else ar
-                    for ar in args
-                )
-                ar = [self._to_tt(ar) if hasattr(ar, "ak") else ar for ar in ar]
-                out = op(tt, *ar, **kwargs)
-                meta = PandasAwkwardAccessor._to_output(
-                    ak.typetracer.length_one_if_typetracer(out)
-                )
-            except (ValueError, TypeError):
-                meta = None
-
-            def inner(data, _=DaskAwkwardAccessor):
-                import akimbo.pandas  # noqa: F401
-
-                ar2 = (ar.ak.array if hasattr(ar, "ak") else ar for ar in args)
-                out = op(data.ak.array, *ar2, **kwargs)
-                return PandasAwkwardAccessor._to_output(out)
-
-            return self._obj.map_partitions(inner, meta=meta)
-
-        return run
-
-    def __getitem__(self, item):
-        def getter(x):
-            return x.ak.__getitem__(item)
-
-        return self._obj.map_partitions(getter, meta=getter(self._obj._meta))
-
-    def apply(self, fn: Callable, where=None, **kwargs):
-        def applier(x):
-            return x.ak.apply(fn, where=where, **kwargs)
-
-        return self._obj.map_partitions(applier, meta=applier(self._obj._meta))
-
     def __getattr__(self, item):
-        if item not in dir(self):
-            raise AttributeError
-        func = getattr(ak, item, None)
+        if self.subaccessor:
+            item = getattr(self.subaccessors[self.subaccessor], item)
+        elif isinstance(item, str) and item in self.subaccessors:
+            return DaskAwkwardAccessor(
+                self._obj, subaccessor=item, behavior=self._behavior
+            )
 
-        if func:
+        def select(*inargs, where=None, **kwargs):
             orig = self._obj.head()
 
-            @functools.wraps(func)
-            def f(*others, **kwargs):
-                def func2(data):
-                    import akimbo.pandas  # noqa: F401
+            def func2(data):
+                import akimbo.pandas  # noqa: F401
 
-                    # data and others are pandas objects here
-                    return getattr(data.ak, item)(*others, **kwargs)
+                others = [
+                    (k._obj if isinstance(k, DaskAwkwardAccessor) else k)
+                    for k in inargs
+                ]
+                if isinstance(item, str):
+                    # work on pandas API
+                    return getattr(PandasAwkwardAccessor(data), item)(*others, **kwargs)
+                else:
+                    # ak to ak
+                    arr = data.ak.array
+                    # others =
+                    if where:
+                        part = arr[where]
+                        arr = ak.with_field(arr, part, where)
+                        others = [_[where] for _ in others]
+                    else:
+                        part = arr
+                    out = item(part, *others, **kwargs)
+                    if where:
+                        out = ak.with_field(arr, out, where)
+                    out = pd.arrays.ArrowExtensionArray(
+                        ak.to_arrow(out, extensionarray=False)
+                    )
+                    return pd.Series(out)
 
-                return self._obj.map_partitions(func2, meta=func2(orig))
+            out0 = func2(orig)
+            return self._obj.map_partitions(func2, meta=out0)
 
-        else:
-            raise AttributeError(item)
-        return f
+        return select
 
-    def __dir__(self) -> Iterable[str]:
-        attrs = (_ for _ in dir(self._obj._meta.ak.array) if not _.startswith("_"))
-        meths = series_methods if self.is_series(self._obj) else df_methods
-        return sorted(set(attrs) | set(meths))
+    def __dir__(self) -> list[str]:
+        return sorted(super().__dir__() + ["to_dask_awkward"])
 
 
 register_series_accessor("ak")(DaskAwkwardAccessor)
