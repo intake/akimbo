@@ -5,6 +5,9 @@ pl = pytest.importorskip("polars")
 pytest.importorskip("akimbo.polars")
 
 
+### EAGER
+
+
 def test_simple():
     s = pl.Series([[1, 2, 3], [], [4, 5]])
     s2 = s.ak[:, -1:]
@@ -60,6 +63,18 @@ def test_ufunc():
     assert df2["a"].to_list() == [[2, 3, 4], [], [5, 6]]
 
 
+def test_binary():
+    s = pl.Series([[1, 2, 3], [], [4, 5]])
+
+    df = pl.DataFrame({"a": s})
+    df2 = df.ak == df
+    assert df2["a"].to_list() == [[True, True, True], [], [True, True]]
+
+    s2 = np.negative(s.ak)
+    s3 = s.ak + s2
+    assert s3.to_list() == [[0, 0, 0], [], [0, 0]]
+
+
 def test_unexplode():
     df = pl.DataFrame(
         {
@@ -97,3 +112,12 @@ def test_unexplode():
 
     with pytest.raises(ValueError):
         df.ak.unexplode("unknown")
+
+
+### LAZY
+
+
+def test_simple_lazy():
+    s = pl.DataFrame({"a": [[1, 2, 3], [], [4, 5]]}).lazy()
+    s2 = s.ak[:, -1:]
+    assert s2.collect()["a"].to_list() == [[3], [], [5]]

@@ -32,12 +32,12 @@ class PolarsAwkwardAccessor(EagerAccessor):
         return pl.from_arrow(pa_arr)
 
 
-@pl.api.register_lazyframe_namespace
+@pl.api.register_lazyframe_namespace("ak")
 class LazyPolarsAwkwardAccessor(LazyAccessor):
     dataframe_type = pl.LazyFrame
     series_type = None  # lazy is never series
 
-    def __getattr__(self, item: str) -> callable:
+    def __getattr__(self, item: str, **flags) -> callable:
         if isinstance(item, str) and item in self.subaccessors:
             return LazyPolarsAwkwardAccessor(
                 self._obj, subaccessor=item, behavior=self._behavior
@@ -52,10 +52,12 @@ class LazyPolarsAwkwardAccessor(LazyAccessor):
                 func0 = None
 
             def f(batch):
-                arr = ak.from_arrow(batch)
-                return func0(arr)
+                arr = ak.from_arrow(batch.to_arrow())
+                out = func0(arr, *inargs, **kwargs)
+                arr = ak.to_arrow_table(out, extensionarray=False)
+                return pl.DataFrame(arr, **flags)
 
-            #    def map_batches(
+            # def map_batches(
             #     self,
             #     function: Callable[[DataFrame], DataFrame],
             #     *,
@@ -71,6 +73,17 @@ class LazyPolarsAwkwardAccessor(LazyAccessor):
             return self._obj.map_batches(f)
 
         return select
+
+
+def concat(*series: pl.LazyFrame) -> pl.LazyFrame:
+    this, *others = series
+    # don't actually expect more than one "others"
+    return this.with_columns(
+        [
+            o.rename({c: f"_df{i + 2}_{c}" for c in o.columns})
+            for i, o in enumerate(others)
+        ]
+    )
 
 
 def arrow_to_polars_type(arrow_type: pa.DataType) -> pl.DataType:
