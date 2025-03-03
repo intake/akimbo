@@ -1,15 +1,15 @@
-from typing import Callable, Dict
+from typing import Dict
 
+import awkward as ak
 import polars as pl
 import pyarrow as pa
 
-from akimbo.apply_tree import match_any
-from akimbo.mixin import Accessor
+from akimbo.mixin import EagerAccessor, LazyAccessor
 
 
 @pl.api.register_series_namespace("ak")
 @pl.api.register_dataframe_namespace("ak")
-class PolarsAwkwardAccessor(Accessor):
+class PolarsAwkwardAccessor(EagerAccessor):
     """Perform awkward operations on a polars series or dataframe
 
     This is for *eager* operations. A Lazy version may eventually be made.
@@ -19,10 +19,6 @@ class PolarsAwkwardAccessor(Accessor):
     dataframe_type = pl.DataFrame
 
     @classmethod
-    def _arrow_to_series(cls, arr):
-        return pl.from_arrow(arr)
-
-    @classmethod
     def to_arrow(cls, data):
         return data.to_arrow()
 
@@ -30,23 +26,64 @@ class PolarsAwkwardAccessor(Accessor):
         # polars already implements this directly
         return self._obj.to_struct()
 
+    def to_output(self, data=None):
+        arr = data if data is not None else self._obj
+        pa_arr = ak.to_arrow(arr, extensionarray=False)
+        return pl.from_arrow(pa_arr)
 
-@pl.api.register_lazyframe_namespace
-class LazyPolarsAwkwardAccessor(Accessor):
+
+@pl.api.register_lazyframe_namespace("ak")
+class LazyPolarsAwkwardAccessor(LazyAccessor):
     dataframe_type = pl.LazyFrame
     series_type = None  # lazy is never series
 
-    def transform(
-        self, fn: Callable, *others, where=None, match=match_any, inmode="ak", **kwargs
-    ):
-        # TODO determine schema from first-run, with df.collect_schema()
-        return pl.map_batches(
-            (self._obj,) + others,
-            lambda d: d.ak.transform(
-                fn, match=match, inmode=inmode, **kwargs
-            ).ak.unpack(),
-            schema=None,
-        )
+    def __getattr__(self, item: str, **flags) -> callable:
+        if isinstance(item, str) and item in self.subaccessors:
+            return LazyPolarsAwkwardAccessor(
+                self._obj, subaccessor=item, behavior=self._behavior
+            )
+
+        def select(*inargs, subaccessor=self.subaccessor, where=None, **kwargs):
+            if subaccessor:
+                func0 = getattr(self.subaccessors[subaccessor](), item)
+            elif callable(item):
+                func0 = item
+            else:
+                func0 = None
+
+            def f(batch):
+                arr = ak.from_arrow(batch.to_arrow())
+                out = func0(arr, *inargs, **kwargs)
+                arr = ak.to_arrow_table(out, extensionarray=False)
+                return pl.DataFrame(arr, **flags)
+
+            # def map_batches(
+            #     self,
+            #     function: Callable[[DataFrame], DataFrame],
+            #     *,
+            #     predicate_pushdown: bool = True,
+            #     projection_pushdown: bool = True,
+            #     slice_pushdown: bool = True,
+            #     no_optimizations: bool = False,
+            #     schema: None | SchemaDict = None,
+            #     validate_output_schema: bool = True,
+            #     streamable: bool = False,
+            # ) -> LazyFrame:
+
+            return self._obj.map_batches(f)
+
+        return select
+
+
+def concat(*series: pl.LazyFrame) -> pl.LazyFrame:
+    this, *others = series
+    # don't actually expect more than one "others"
+    return this.with_columns(
+        [
+            o.rename({c: f"_df{i + 2}_{c}" for c in o.columns})
+            for i, o in enumerate(others)
+        ]
+    )
 
 
 def arrow_to_polars_type(arrow_type: pa.DataType) -> pl.DataType:

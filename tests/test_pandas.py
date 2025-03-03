@@ -70,7 +70,7 @@ def test_manual_ufunc():
         {"a": [None], "b": [5, 6]},
         {"a": ["blah"], "b": [7]},
     ]
-    assert df2.tolist() == expected
+    assert df2.ak.tolist() == expected
 
 
 def test_mixed_ufunc():
