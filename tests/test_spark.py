@@ -167,6 +167,6 @@ def test_apply_numba(df):
             # default output for zero-length schema guesser
             return ak.Array([None, 6])
 
-    out = df.ak.apply(f2, where="x")
+    out = df.ak.apply(f2)
     result = out.ak.to_output()
     assert result.ak.tolist() == [6, None] * 100

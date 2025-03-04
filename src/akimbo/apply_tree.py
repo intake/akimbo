@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import functools
 import inspect
-from typing import Callable, Literal, Sequence
+from typing import Callable, Literal
 
 import awkward as ak
 import pyarrow as pa
@@ -26,12 +26,12 @@ def numeric(*layout, **_):
 
 def run_with_transform(
     arr: ak.Array,
-    op,
-    match=leaf,
-    outtype=None,
-    inmode="arrow",
+    op: callable,
+    match: callable = leaf,
+    outtype: callable | None = None,
+    inmode: str = "ak",
     others=(),
-    match_kwargs=None,
+    match_kwargs: dict | None = None,
     **kw,
 ) -> ak.Array:
     def func(layout, **kwargs):
@@ -70,76 +70,46 @@ def dec(
     func: callable,
     match: Callable[[ak.contents.Content], bool] = leaf,
     outtype: Callable[[ak.contents.Content], ak.contents.Content] | None = None,
-    inmode: Literal["arrow", "numpy", "ak"] = "arrow",
+    inmode: Literal["arrow", "numpy", "ak"] = "ak",
 ):
-    """Make a nested/ragged version of an operation to apply throughout a tree
-
-    Parameters
-    ----------
-    func: which we want to apply to (parts of) inputted data
-    match: function to determine if a part of the data structure matches the type we want to
-        operate on
-    outtype: postprocessing function after transform
-    inmode: how ``func`` expects its inputs: as
-        - ak: awkward arrays,
-        - numpy
-        - arrow
-        - other: anything that can be cast to ak arrays, e.g., number literals
-    """
+    """Make a nested/ragged version of an operation to apply throughout a tree"""
 
     @functools.wraps(func)
-    def f(self, *args, where=None, match_kwargs=None, **kwargs):
-        if not (
-            where is None
-            or isinstance(where, str)
-            or isinstance(where, Sequence)
-            and all(isinstance(_, str) for _ in where)
-        ):
-            raise ValueError
+    def f(arr, *args, where=None, match_kwargs=None, **kwargs):
         others = []
         if args:
             sig = list(inspect.signature(func).parameters)[1:]
             for k, arg in zip(sig, args):
                 if isinstance(arg, ak.Array):
                     others.append(arg)
-                elif isinstance(
-                    arg, (self.accessor.series_type, self.accessor.dataframe_type)
-                ):
+                elif hasattr(arg, "ak") and hasattr(arg.ak, "array"):
                     others.append(arg.ak.array)
                 elif isinstance(arg, pa.Array):
                     others.append(ak.from_arrow(arg))
                 else:
                     kwargs.update({k: arg for k, arg in zip(sig, args)})
         if where:
-            bits = tuple(where.split("."))
-            arr = self.accessor.array
+            bits = tuple(where.split(".") if isinstance(where, str) else where)
             part = arr.__getitem__(bits)
-            others = [o.__getitem__(bits) for o in others]
-            out = run_with_transform(
-                part,
-                func,
-                match=match,
-                outtype=outtype,
-                inmode=inmode,
-                others=others,
-                match_kwargs=match_kwargs,
-                **kwargs,
-            )
-            final = ak.with_field(arr, out, where=where)
-            return self.accessor.to_output(final)
+            others = [
+                o.__getitem__(bits) if isinstance(o, ak.Array) else o for o in others
+            ]
         else:
-            return self.accessor.to_output(
-                run_with_transform(
-                    self.accessor.array,
-                    func,
-                    match=match,
-                    outtype=outtype,
-                    inmode=inmode,
-                    others=others,
-                    match_kwargs=match_kwargs,
-                    **kwargs,
-                )
-            )
+            part = arr
+
+        out = run_with_transform(
+            part,
+            func,
+            match=match,
+            outtype=outtype,
+            inmode=inmode,
+            others=others,
+            match_kwargs=match_kwargs,
+            **kwargs,
+        )
+        if where:
+            out = ak.with_field(arr, out, where=where)
+        return out
 
     f.__doc__ = f"""Run vectorized functions on nested/ragged/complex array
 
