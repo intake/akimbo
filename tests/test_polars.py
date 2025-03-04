@@ -121,3 +121,65 @@ def test_simple_lazy():
     s = pl.DataFrame({"a": [[1, 2, 3], [], [4, 5]]}).lazy()
     s2 = s.ak[:, -1:]
     assert s2.collect()["a"].to_list() == [[3], [], [5]]
+
+
+def test_apply_lazy():
+    s = pl.DataFrame({"_ak_series_": pl.Series([[1, 2, 3], [], [4, 5]])}).lazy()
+    s2 = s.ak.apply(np.negative)
+    assert s2.ak.to_output().to_list() == [[-1, -2, -3], [], [-4, -5]]
+
+
+def test_apply_where_lazy():
+    data = [
+        {"a": [1, 2, 3], "b": [1, 2, 3]},
+        {"a": [1, 2, 3], "b": [1, 2, 3]},
+        {"a": [1, 2, 3], "b": [1, 2, 3]},
+    ]
+    s = pl.DataFrame(data).lazy()
+    s2 = s.ak.apply(np.negative, where="a")
+    assert s2.collect()[0].to_dicts() == [{"a": [-1, -2, -3], "b": [1, 2, 3]}]
+
+
+def test_pack_unpack_lazy():
+    data = [
+        {"a": [1, 2, 3], "b": [1, 2, 3]},
+        {"a": [1, 2, 3], "b": [1, 2, 3]},
+        {"a": [1, 2, 3], "b": [1, 2, 3]},
+    ]
+    s = pl.DataFrame({"_ak_series_": pl.Series(data)}).lazy()
+    df = s.ak.unpack()
+    assert df.collect()["a"].to_list() == [[1, 2, 3]] * 3
+    s2 = df.ak.pack().ak.to_output()
+    assert s2.to_list() == data
+
+
+def test_operator_lazy():
+    s = pl.DataFrame({"_ak_series_": pl.Series([[1, 2, 3], [], [4, 5]])}).lazy()
+    s2 = s.ak + 1
+    assert s2.ak.to_output().to_list() == [[2, 3, 4], [], [5, 6]]
+
+
+def test_ufunc_lazy():
+    s0 = pl.DataFrame({"_ak_series_": pl.Series([[1, 2, 3], [], [4, 5]])})
+    s = s0.lazy()
+    s2 = np.negative(s.ak)
+    assert s2.ak.to_output().to_list() == [[-1, -2, -3], [], [-4, -5]]
+
+    s2 = np.add(s.ak, 1)
+    assert s2.ak.to_output().to_list() == [[2, 3, 4], [], [5, 6]]
+
+    df = pl.DataFrame({"a": s0}).lazy()
+    df2 = df.ak + 1
+    assert df2.ak.to_output()["a"].to_list() == [[2, 3, 4], [], [5, 6]]
+
+
+def test_binary_lazy():
+    s = pl.Series([[1, 2, 3], [], [4, 5]])
+
+    df = pl.DataFrame({"a": s})
+    df2 = df.ak == df
+    assert df2["a"].to_list() == [[True, True, True], [], [True, True]]
+
+    s2 = np.negative(s.ak)
+    s3 = s.ak + s2
+    assert s3.to_list() == [[0, 0, 0], [], [0, 0]]

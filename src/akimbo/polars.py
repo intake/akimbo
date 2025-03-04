@@ -37,6 +37,12 @@ class LazyPolarsAwkwardAccessor(LazyAccessor):
     dataframe_type = pl.LazyFrame
     series_type = None  # lazy is never series
 
+    def to_output(self, data=None):
+        out = self._obj.collect()
+        if out.columns == ["_ak_series_"]:
+            out = out["_ak_series_"]
+        return out
+
     def __getattr__(self, item: str, **flags) -> callable:
         if isinstance(item, str) and item in self.subaccessors:
             return LazyPolarsAwkwardAccessor(
@@ -53,10 +59,47 @@ class LazyPolarsAwkwardAccessor(LazyAccessor):
 
             def f(batch):
                 arr = ak.from_arrow(batch.to_arrow())
-                out = func0(arr, *inargs, **kwargs)
+
+                if any(isinstance(_, str) and _ == "_ak_other_" for _ in inargs):
+                    # binary input
+                    other = arr[[_ for _ in arr.fields if _.startswith("_df2_")]]
+                    # 5 == len("_df2_"); rename to original fields
+                    other.layout._fields[:] = [k[5:] for k in other.fields]
+                    arr = arr[[_ for _ in arr.fields if not _.startswith("_df2_")]]
+                    if other.fields == ["_ak_series_"]:
+                        other = other["_ak_series_"]
+                    if where is not None:
+                        other = other[where]
+                    inargs0 = [other if str(_) == "_ak_other_" else _ for _ in inargs]
+                else:
+                    inargs0 = inargs
+                if where:
+                    arr0 = arr
+                    arr = arr[where]
+                if arr.fields == ["_ak_series_"]:
+                    arr = arr["_ak_series_"]
+
+                out = func0(arr, *inargs0, **kwargs)
+                if where:
+                    out = ak.with_field(arr0, out, where)
+                if not out.layout.fields:
+                    out = ak.Array({"_ak_series_": out})
                 arr = ak.to_arrow_table(out, extensionarray=False)
                 return pl.DataFrame(arr, **flags)
 
+            inargs = [_._obj if isinstance(_, type(self)) else _ for _ in inargs]
+            n_others = sum(isinstance(_, self.dataframe_type) for _ in inargs)
+            if n_others == 1:
+                other = next(_ for _ in inargs if isinstance(_, self.dataframe_type))
+                inargs = [
+                    "_ak_other_" if isinstance(_, self.dataframe_type) else _
+                    for _ in inargs
+                ]
+                obj = concat(self._obj, other)
+            elif n_others > 1:
+                raise NotImplementedError
+            else:
+                obj = self._obj
             # def map_batches(
             #     self,
             #     function: Callable[[DataFrame], DataFrame],
@@ -69,10 +112,23 @@ class LazyPolarsAwkwardAccessor(LazyAccessor):
             #     validate_output_schema: bool = True,
             #     streamable: bool = False,
             # ) -> LazyFrame:
+            arrow_type = polars_to_arrow_schema(obj.collect_schema())
+            arr = pa.table([[]] * len(arrow_type), schema=arrow_type)
+            out1 = f(pl.from_arrow(arr))
 
-            return self._obj.map_batches(f)
+            return obj.map_batches(f, schema=out1.schema)
 
         return select
+
+    def pack(self):
+        return self._obj.select(
+            pl.struct(*self._obj.collect_schema().names()).alias("_ak_series_")
+        )
+
+    def unpack(self):
+        cols = self._obj.collect_schema().names()
+        assert len(cols) == 1
+        return self._obj.select(pl.col(cols[0]).struct.unnest())
 
 
 def concat(*series: pl.LazyFrame) -> pl.LazyFrame:
@@ -80,51 +136,10 @@ def concat(*series: pl.LazyFrame) -> pl.LazyFrame:
     # don't actually expect more than one "others"
     return this.with_columns(
         [
-            o.rename({c: f"_df{i + 2}_{c}" for c in o.columns})
+            o.rename({c: f"_df{i + 2}_{c}" for c in o.collect_schema().names()})
             for i, o in enumerate(others)
         ]
     )
-
-
-def arrow_to_polars_type(arrow_type: pa.DataType) -> pl.DataType:
-    type_mapping = {
-        pa.int8(): pl.Int8,
-        pa.int16(): pl.Int16,
-        pa.int32(): pl.Int32,
-        pa.int64(): pl.Int64,
-        pa.uint8(): pl.UInt8,
-        pa.uint16(): pl.UInt16,
-        pa.uint32(): pl.UInt32,
-        pa.uint64(): pl.UInt64,
-        pa.float32(): pl.Float32,
-        pa.float64(): pl.Float64,
-        pa.string(): pl.String,
-        pa.bool_(): pl.Boolean,
-    }
-
-    if arrow_type in type_mapping:
-        return type_mapping[arrow_type]
-
-    # parametrised types
-    if pa.types.is_timestamp(arrow_type):
-        return pl.Datetime(time_unit=arrow_type.unit, time_zone=arrow_type.tx)
-
-    if pa.types.is_decimal(arrow_type):
-        return pl.Decimal(precision=arrow_type.precision, scale=arrow_type.scale)
-
-    # Handle list type
-    if pa.types.is_list(arrow_type):
-        value_type = arrow_to_polars_type(arrow_type.value_type)
-        return pl.List(value_type)
-
-    # Handle struct type
-    if pa.types.is_struct(arrow_type):
-        fields = {}
-        for field in arrow_type:
-            fields[field.name] = arrow_to_polars_type(field.type)
-        return pl.Struct(fields)
-
-    raise ValueError(f"Unsupported Arrow type: {arrow_type}")
 
 
 def polars_to_arrow_type(polars_type: pl.DataType) -> pa.DataType:
@@ -148,7 +163,7 @@ def polars_to_arrow_type(polars_type: pl.DataType) -> pa.DataType:
         return type_mapping[polars_type]
 
     # parametrised types
-    if isinstance(polars_type, pl.DataType):
+    if isinstance(polars_type, pl.Datetime):
         return pa.timestamp(polars_type.unit, polars_type.time_zone)
 
     if isinstance(polars_type, pl.Decimal):
@@ -162,19 +177,12 @@ def polars_to_arrow_type(polars_type: pl.DataType) -> pa.DataType:
     # Handle struct type
     if isinstance(polars_type, pl.Struct):
         fields = []
-        for name, dtype in polars_type.fields.items():
+        for name, dtype in dict(polars_type).items():
             arrow_type = polars_to_arrow_type(dtype)
             fields.append(pa.field(name, arrow_type))
         return pa.struct(fields)
 
     raise ValueError(f"Unsupported Polars type: {polars_type}")
-
-
-def arrow_to_polars_schema(arrow_schema: pa.Schema) -> Dict[str, pl.DataType]:
-    polars_schema = {}
-    for field in arrow_schema:
-        polars_schema[field.name] = arrow_to_polars_type(field.type)
-    return polars_schema
 
 
 def polars_to_arrow_schema(polars_schema: Dict[str, pl.DataType]) -> pa.Schema:
