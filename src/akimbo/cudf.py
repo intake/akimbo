@@ -22,25 +22,11 @@ except ImportError:
 from akimbo.ak_from_cudf import cudf_to_awkward as from_cudf
 from akimbo.apply_tree import dec, leaf
 from akimbo.datetimes import DatetimeAccessor
-from akimbo.datetimes import match as match_t
-from akimbo.mixin import EagerAccessor
-from akimbo.strings import StringAccessor
-
-
-def match_string(arr):
-    return arr.parameters.get("__array__", "") == "string"
-
-
-class CudfStringAccessor(StringAccessor):
-    """String operations on nested/var-length data"""
-
-    def decode(self, encoding: str = "utf-8"):
-        raise NotImplementedError(
-            "cudf does not support bytearray type, so we can't automatically identify them"
-        )
-
-    def encode(self, encoding: str = "utf-8"):
-        raise NotImplementedError("cudf does not support bytearray type")
+from akimbo.datetimes import match as match_dt
+from akimbo.datetimes import methods as dt_methods
+from akimbo.mixin import EagerAccessor, numeric
+from akimbo.ops import rename
+from akimbo.strings import _SA_METHODMAPPING, StringAccessor, match_string, strptime
 
 
 def dec_cu(op, match=match_string):
@@ -55,55 +41,72 @@ def dec_cu(op, match=match_string):
     return dec(func=f, match=match, inmode="ak")
 
 
-for meth in dir(StringMethods):
-    if meth.startswith("_"):
-        continue
+class CudfStringAccessor(StringAccessor):
+    """String operations on nested/var-length data"""
 
-    @functools.wraps(getattr(StringMethods, meth))
-    def f(lay, method=meth, **kwargs):
-        # this is different from dec_cu, because we need to instantiate StringMethods
-        # before getting the method from it
-        if hasattr(cudf.Series, "_from_column"):
-            ser = cudf.Series._from_column(lay._to_cudf(cudf, None, len(lay)))
-        else:
-            ser = cudf.Series(lay._to_cudf(cudf, None, len(lay)))
-        col = getattr(StringMethods(ser), method)(**kwargs)
-        return from_cudf(col).layout
+    def decode(self, arr, encoding: str = "utf-8"):
+        raise NotImplementedError(
+            "cudf does not support bytearray type, so we can't automatically identify them"
+        )
 
-    setattr(CudfStringAccessor, meth, dec(func=f, match=match_string, inmode="ak"))
+    def encode(self, arr, encoding: str = "utf-8"):
+        raise NotImplementedError("cudf does not support bytearray type")
+
+    @staticmethod
+    def method_name(attr: str) -> str:
+        return _SA_METHODMAPPING.get(attr, attr)
+
+    def __getattr__(self, attr: str) -> callable:
+        attr = self.method_name(attr)
+
+        @functools.wraps(getattr(StringMethods, attr))
+        def f(lay, **kwargs):
+            col = lay._to_cudf(cudf, None, len(lay))
+            if hasattr(cudf.Series, "_from_column"):
+                ser = cudf.Series._from_column(col)
+            else:
+                ser = cudf.Series(col)
+            col = getattr(StringMethods(ser), attr)(**kwargs)
+            return from_cudf(col).layout
+
+        return dec(f, match=match_string, inmode="ak")
+
+    strptime = staticmethod(dec_cu(strptime, match=match_string))
 
 
 class CudfDatetimeAccessor(DatetimeAccessor):
-    ...
+    def __getattr__(self, attr):
+        @functools.wraps(getattr(DatetimeColumn, attr))
+        def f(lay, **kwargs):
+            col = lay._to_cudf(cudf, None, len(lay))
+            col = getattr(col, attr)
+            if callable(col):
+                # as opposed to an attribute
+                col = col(**kwargs)
+            if hasattr(cudf.Series, "_from_column"):
+                ser = cudf.Series._from_column(col)
+            else:
+                ser = cudf.Series(col)
+            return from_cudf(ser).layout
+
+        return dec(f, match=match_dt, inmode="ak")
+
+    def __dir__(self):
+        return dt_methods
 
 
-for meth in dir(DatetimeColumn):
-    if meth.startswith("_") or meth == "strptime":
-        # strptime belongs in .str, not here!
-        continue
-
-    @functools.wraps(getattr(DatetimeColumn, meth))
-    def f(lay, method=meth, **kwargs):
-        # this is different from dec_cu, because we need to instantiate StringMethods
-        # before getting the method from it
-        m = getattr(lay._to_cudf(cudf, None, len(lay)), method)
-        if callable(m):
-            col = m(**kwargs)
-        else:
-            # attributes giving components
-            col = m
-        if hasattr(cudf.Series, "_from_column"):
-            return from_cudf(cudf.Series._from_column(col)).layout
-        return from_cudf(cudf.Series(col)).layout
-
-    if isinstance(getattr(DatetimeColumn, meth), property):
-        setattr(
-            CudfDatetimeAccessor,
-            meth,
-            property(dec(func=f, match=match_t, inmode="ak")),
+def _cast_inner(col, dtype):
+    try:
+        return libcudf.unary.cast(col, dtype)
+    except AttributeError:
+        return cudf.core.column.ColumnBase(
+            col.data,
+            size=len(col),
+            dtype=np.dtype(dtype),
+            mask=None,
+            offset=0,
+            children=(),
         )
-    else:
-        setattr(CudfDatetimeAccessor, meth, dec(func=f, match=match_t, inmode="ak"))
 
 
 class CudfAwkwardAccessor(EagerAccessor):
@@ -113,61 +116,46 @@ class CudfAwkwardAccessor(EagerAccessor):
     possible.
     """
 
+    funcs = {"cast": dec_cu(_cast_inner, match=leaf), "rename": rename}
+
     series_type = Series
     dataframe_type = DataFrame
+    subaccessors = {"str": CudfStringAccessor, "dt": CudfDatetimeAccessor}
 
-    @classmethod
-    def _to_output(cls, arr):
+    def to_output(self, data=None):
+        arr = data if data is not None else self._obj
         if isinstance(arr, ak.Array):
             return ak.to_cudf(arr)
         elif isinstance(arr, ak.contents.Content):
             return arr._to_cudf(cudf, None, len(arr))
         return arr
 
-    @classmethod
-    def to_array(cls, data) -> ak.Array:
-        if isinstance(data, cls.series_type):
+    @property
+    def array(self):
+        data = self._obj
+        if isinstance(data, self.series_type):
             return from_cudf(data)
         out = {}
         for col in data.columns:
             out[col] = from_cudf(data[col])
         return ak.Array(out)
 
-    @property
-    def array(self) -> ak.Array:
-        return self.to_array(self._obj)
+    @classmethod
+    def _create_op(cls, op):
+        def run(self, *args, **kwargs):
+            args = [
+                ak.Array([_], backend="cuda")
+                if isinstance(_, (str, int, float, np.number))
+                else _
+                for _ in args
+            ]
+            return self.transform(op, *args, match=numeric, **kwargs)
 
-    @property
-    def str(self):
-        """Nested string operations"""
-        # need to find string ops within cudf
-        return CudfStringAccessor(self)
-
-    try:
-        cast = dec_cu(libcudf.unary.cast, match=leaf)
-    except AttributeError:
-
-        def cast_inner(col, dtype):
-            return cudf.core.column.ColumnBase(
-                col.data,
-                size=len(col),
-                dtype=np.dtype(dtype),
-                mask=None,
-                offset=0,
-                children=(),
-            )
-
-        cast = dec_cu(cast_inner, match=leaf)
-
-    @property
-    def dt(self):
-        """Nested datetime operations"""
-        # need to find datetime ops within cudf
-        return CudfDatetimeAccessor(self)
+        return run
 
     def apply(self, fn: Callable, *args, **kwargs):
         if "CPUDispatcher" in str(fn):
-            # auto wrap original function for GPU
+            # auto wrap original function for GPU numba func
             raise NotImplementedError
         super().apply(fn, *args, **kwargs)
 

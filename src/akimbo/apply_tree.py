@@ -70,7 +70,7 @@ def dec(
     func: callable,
     match: Callable[[ak.contents.Content], bool] = leaf,
     outtype: Callable[[ak.contents.Content], ak.contents.Content] | None = None,
-    inmode: Literal["arrow", "numpy", "ak"] = "ak",
+    inmode: Literal["arrow", "numpy", "ak", "other"] = "ak",
 ):
     """Make a nested/ragged version of an operation to apply throughout a tree"""
 
