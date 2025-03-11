@@ -2,21 +2,19 @@ from __future__ import annotations
 
 import functools
 import operator
-from typing import Callable, Iterable
+from typing import Callable
 
 import awkward as ak
 import numpy as np
 import pyarrow.compute as pc
 
 from akimbo.apply_tree import dec, match_any, numeric, run_with_transform
-from akimbo.utils import rec_list_swap, to_ak_layout
+from akimbo.ops import join, rename
+from akimbo.utils import to_ak_layout
 
 methods = [
     _ for _ in (dir(ak)) if not _.startswith(("_", "ak_")) and not _[0].isupper()
-] + ["apply", "array", "explode", "dt", "str"]
-
-df_methods = sorted(methods + ["pack"])
-series_methods = sorted(methods + ["unpack"])
+]
 
 
 def radd(left, right):
@@ -127,133 +125,101 @@ class ArithmeticMixin:
         cls._add_comparison_ops()
 
 
-class Accessor(ArithmeticMixin):
+class EagerAccessor(ArithmeticMixin):
     """Bring the awkward API to dataframes and series"""
 
-    aggregations = True  # False means data is partitioned
     series_type = ()
     dataframe_type = ()
     subaccessors = {}
+    funcs = {"cast": dec(pc.cast, inmode="arrow"), "join": join, "rename": rename}
 
-    def __init__(self, obj, behavior=None):
+    def __init__(self, obj, behavior=None, subaccessor=None):
+        self.subaccessor = subaccessor
         self._obj = obj
         self._behavior = behavior
 
     def __call__(self, *args, behavior=None, **kwargs):
-        return Accessor(self._obj, behavior=behavior)
+        return EagerAccessor(self._obj, behavior=behavior)
 
-    cast = dec(pc.cast)
+    def unexplode(self, *cols: tuple[str, ...], outname="grouped") -> ak.Array:
+        """Repack "exploded" form dataframes into lists of structs
 
-    @property
-    def accessor(self):
-        # if we use `dec`, which expects to work on
-        return self
+        This is the inverse of the regular dataframe explode() process.
 
-    @classmethod
-    def is_series(cls, data):
-        return isinstance(data, cls.series_type) if cls.series_type else False
-
-    @classmethod
-    def is_dataframe(cls, data):
-        return isinstance(data, cls.dataframe_type)
-
-    @classmethod
-    def _arrow_to_series(cls, data):
-        """How to make a series from arrow data"""
-        raise NotImplementedError
-
-    @classmethod
-    def _to_output(cls, data):
-        """How to make a series from ak or arrow"""
-        if isinstance(data, ak.Array):
-            data = ak.to_arrow(data, extensionarray=False)
-        return cls._arrow_to_series(data)
-
-    def to_output(self, data=None):
-        """Data returned as a series"""
-        data = data if data is not None else self.array
-        if not isinstance(data, Iterable):
-            return data
-        return self._to_output(data)
-
-    def apply(self, fn: Callable, where=None, **kwargs):
-        """Perform arbitrary function on all the values of the series
-
-        The function should take an ak array as input and produce an
-        ak array or scalar.
-
-        Unlike ``transform``, the function takes and returns ak.Array instances
-        and acts on a whole schema tree.
+        Uses arrow directly.
         """
-        if where:
-            bits = tuple(where.split(".")) if isinstance(where, str) else where
-            arr = self.array
-            part = arr.__getitem__(bits)
-            out = fn(part, **kwargs)
-            final = ak.with_field(arr, out, where=where)
-        else:
-            final = fn(self.array)
-        return self.to_output(final)
+        from akimbo.utils import rec_list_swap
 
-    def transform(
-        self, fn: Callable, *others, where=None, match=match_any, inmode="ak", **kwargs
-    ):
-        """Perform arbitrary function to selected parts of the data tree
-
-        This process walks thought the data's schema tree, and applies the given
-        function only on the matching nodes.
-
-        The function input(s) and output depend on inmode and outttpe
-        arguments.
-
-        Parameters
-        ----------
-        fn: the operation you want to perform. Typically unary or binary, and may take
-            extra kwargs
-        others: extra arguments, perhaps other akimbo series
-        where: path in the schema tree to apply this
-        match: when walking the schema, this determines if a node should be processed;
-            it will be a function taking one or more ak.contents classes. ak.apaply_tree
-            contains convenience matchers macth_any, leaf and numeric, and more matchers
-            can be found in the string and datetime modules
-        inmode: data should be passed to the given function as:
-            "arrow" | "numpy" (includes cupy) | "ak" layout | "array" high-level ak.Array
-        kwargs: passed to the operation, except those that are taken by ``run_with_transform``.
-        """
-        if where:
-            bits = tuple(where.split(".")) if isinstance(where, str) else where
-            arr = self.array
-            part = arr.__getitem__(bits)
-            others = (
-                _
-                if isinstance(_, (str, int, float, np.number))
-                else to_ak_layout(_).__getitem__(bits)
-                for _ in others
+        pa_arr = self.arrow
+        # TODO: this does not work on cuDF as here we use arrow directly
+        # TODO: pandas indexes are pre-grouped cat-like structures
+        cols = list(cols)
+        if set(cols) - set(pa_arr.column_names):
+            raise ValueError(
+                "One or more grouping column (%s) not in available columns %s",
+                cols,
+                pa_arr.column_names,
             )
-            callkwargs = {
-                k: _
-                if isinstance(_, (str, int, float, np.number))
-                else to_ak_layout(_).__getitem__(bits)
-                for k, _ in kwargs.items()
-            }
-            out = run_with_transform(
-                part, fn, match=match, others=others, inmode=inmode, **callkwargs
-            )
-            final = ak.with_field(arr, out, where=where)
-        else:
-            final = run_with_transform(
-                self.array, fn, match=match, others=others, inmode=inmode, **kwargs
-            )
-        return self.to_output(final)
+        outcols = [(_, "list") for _ in pa_arr.column_names if _ not in cols]
+        if not outcols:
+            raise ValueError("Cannot group on all available columns")
+        outcols2 = [f"{_[0]}_list" for _ in outcols]
+        grouped = pa_arr.group_by(cols).aggregate(outcols)
+        akarr = ak.from_arrow(grouped)
+        akarr2 = akarr[outcols2]
+        akarr2.layout._fields = [_[0] for _ in outcols]
+        struct = rec_list_swap(akarr2)
+        final = ak.with_field(akarr[cols], struct, outname)
+
+        return self.to_output(final).ak.unpack()
+
+    @classmethod
+    def _create_op(cls, op):
+        def run(self, *args, **kwargs):
+            args = [
+                to_ak_layout(_) if isinstance(_, (str, int, float, np.number)) else _
+                for _ in args
+            ]
+            return self.transform(op, *args, match=numeric, **kwargs)
+
+        return run
 
     def __getitem__(self, item):
-        out = self.array.__getitem__(item)
-        return self.to_output(out)
+        return self.__getattr__(operator.getitem)(item)
 
-    def __dir__(self) -> Iterable[str]:
-        attrs = (_ for _ in dir(self.array) if not _.startswith("_"))
-        meths = series_methods if self.is_series(self._obj) else df_methods
-        return sorted(set(attrs) | set(meths) | set(self.subaccessors))
+    def __array_ufunc__(self, *args, where=None, out=None, **kwargs):
+        # includes operator overload like df.ak + 1
+        ufunc, call, inputs, *callargs = args
+        if out is not None or call != "__call__":
+            raise NotImplementedError
+
+        return self.__getattr__(ufunc)(*callargs, where=where, **kwargs)
+
+    def __dir__(self) -> list[str]:
+        if self.subaccessor is not None:
+            return dir(self.subaccessors[self.subaccessor]())
+        cls_meth = [_ for _ in dir(self.dataframe_type) if not _.startswith("_")]
+        this_meth = [_ for _ in dir(type(self)) if not _.startswith("_")]
+        return sorted(methods + cls_meth + this_meth + list(self.funcs))
+
+    def transform(
+        self,
+        fn: callable,
+        *others,
+        where=None,
+        match=match_any,
+        inmode="array",
+        **kwargs,
+    ):
+        def f(arr, *others, **kwargs):
+            return run_with_transform(
+                arr, fn, match=match, others=others, inmode=inmode, **kwargs
+            )
+
+        return self.__getattr__(f)(*others, where=where, **kwargs)
+
+    def apply(self, fn: Callable, *others, where=None, **kwargs):
+        return self.__getattr__(fn)(*others, where=where, **kwargs)
 
     def with_behavior(self, behavior, where=()):
         """Assign a behavior to this array-of-records"""
@@ -261,12 +227,6 @@ class Accessor(ArithmeticMixin):
         # TODO: implement where= (assign directly to ._paraneters["__record__"]
         #  of output's layout. In this case, behaviour is a dict of locations to apply to.
         #  and we can continually add to it (or accept a dict)
-        # beh = self._behavior.copy()
-        # if isinstance(behavior, dict):
-        #    beh.update(behavior)
-        # else:
-        #    # str or type
-        #    beh[where] = behaviour
         return type(self)(self._obj, behavior)
 
     with_name = with_behavior  # alias - this is the upstream name
@@ -276,79 +236,74 @@ class Accessor(ArithmeticMixin):
     def __array_function__(self, *args, **kwargs):
         return self.array.__array_function__(*args, **kwargs)
 
-    def __array_ufunc__(self, *args, where=None, out=None, **kwargs):
-        # includes operator overload like df.ak + 1
-        ufunc, call, inputs, *callargs = args
-        if out is not None or call != "__call__":
-            raise NotImplementedError
-        if where:
-            # called like np.add(df.ak, 1, where="...")
-            bits = tuple(where.split(".")) if isinstance(where, str) else where
-            arr = self.array
-            part = arr.__getitem__(bits)
-            callargs = (
-                _
-                if isinstance(_, (str, int, float, np.number))
-                else to_ak_layout(_).__getitem__(bits)
-                for _ in callargs
-            )
-            callkwargs = {
-                k: _
-                if isinstance(_, (str, int, float, np.number))
-                else to_ak_layout(_).__getitem__(bits)
-                for k, _ in kwargs.items()
-            }
-
-            out = self.to_output(ufunc(part, *callargs, **callkwargs))
-            return self.to_output(ak.with_field(arr, out, where=where))
-
-        return self.to_output(ufunc(self.array, *callargs, **kwargs))
-
-    @property
-    def arrow(self) -> ak.Array:
-        """Data as an arrow array"""
-        return self.to_arrow(self._obj)
-
-    @classmethod
-    def to_arrow(cls, data):
-        """Data as an arrow array"""
-        raise NotImplementedError
-
-    @property
-    def array(self) -> ak.Array:
-        """Data as an awkward array"""
-        if self._behavior:
-            return ak.with_name(ak.from_arrow(self.arrow), self._behavior)
-        return ak.from_arrow(self.arrow)
-
     @classmethod
     def register_accessor(cls, name: str, klass: type):
         # TODO: check clobber?
         cls.subaccessors[name] = klass
 
-    def rename(self, where, to):
-        """Assign new field name to given location in the structure
-
-        Parameters
-        ----------
-        where: str | tuple[str]
-            location we would like to rename
-        to: str
-            new name
-        """
+    def _pre(self, item):
         arr = self.array
-        lay = ak.copy(arr.layout)
-        where = list(where) if isinstance(where, tuple) else [where]
-        parent = None
-        bit = lay
-        while where:
-            if getattr(bit, "contents", None):
-                this = bit.fields.index(where.pop(0))
-                parent, bit = bit, bit.contents[this]
+        if callable(item):
+            func = item
+        elif item in self.funcs:
+            func = self.funcs[item]
+        elif hasattr(arr, item) and callable(getattr(arr, item)):
+            func = getattr(type(arr), item)
+        elif self.subaccessor:
+            func = getattr(self.subaccessors[self.subaccessor](), item)
+        elif hasattr(ak, item):
+            func = getattr(ak, item)
+        else:
+            raise AttributeError(item)
+        return func, (arr,)
+
+    @classmethod
+    def _to_arr(cls, other):
+        # make eager ak arrays for any standard input
+        if isinstance(other, (cls.series_type, cls.dataframe_type)):
+            return other.ak.array
+        if isinstance(other, cls):
+            return other.array
+        return other
+
+    def __getattr__(self, item, frame=False):
+        if not self.subaccessor and item in self.subaccessors:
+            return type(self)(self._obj, subaccessor=item)
+        func, args = self._pre(item)
+        frame = isinstance(self._obj, self.dataframe_type)
+
+        @functools.wraps(func)
+        def f(*others, where=None, **kwargs):
+            others = [self._to_arr(other) for other in others]
+            kwargs = {k: self._to_arr(v) for k, v in kwargs.items()}
+            if where:
+                arr0 = args[0]
+                ar0 = [_[where] for _ in args]
             else:
-                parent, bit = bit, bit.content
-        parent.fields[this] = to
-        return self.to_output(ak.Array(lay))
+                arr0 = None
+                ar0 = args
+            ak_arr = func(*ar0, *others, **kwargs)
+            if isinstance(ak_arr, ak.Array):
+                if where:
+                    ak_arr = ak.with_field(arr0, ak_arr, where)
+                if frame and ak_arr.fields == ar0[0].fields:
+                    return self.to_output(ak_arr).ak.unpack()
+                return self.to_output(ak_arr)
+            return ak_arr
+
+        return f
+
+    def __init_subclass__(cls, **kwargs):
+        # auto add methods to all derivative classes
+        cls._add_all()
+
+    @property
+    def array(self):
+        return ak.from_arrow(self.arrow)
+
+    @property
+    def arrow(self):
+        return self.to_arrow(self._obj)
 
     def pack(self):
         """Make a single complex series out of the columns of a dataframe"""
@@ -370,138 +325,24 @@ class Accessor(ArithmeticMixin):
         out = {k: self.to_output(arr[k]) for k in arr.fields}
         return self.dataframe_type(out)
 
-    def unexplode(self, *cols, outname="grouped"):
-        """Repack "exploded" form dataframes into lists of structs
+    def to_output(self, data=None):
+        """Data returned as a series"""
+        raise NotImplementedError
 
-        This is the inverse of the regular dataframe explode() process.
-        """
-        # TODO: this does not work on cuDF as here we use arrow directly
-        # TODO: pandas indexes are pre-grouped cat-like structures
-        cols = list(cols)
-        arr = self.arrow
-        if set(cols) - set(arr.column_names):
-            raise ValueError(
-                "One or more rouping column (%s) not in available columns %s",
-                cols,
-                arr.column_names,
-            )
-        outcols = [(_, "list") for _ in arr.column_names if _ not in cols]
-        if not outcols:
-            raise ValueError("Cannot group on all available columns")
-        outcols2 = [f"{_[0]}_list" for _ in outcols]
-        grouped = arr.group_by(cols).aggregate(outcols)
-        akarr = ak.from_arrow(grouped)
-        akarr2 = akarr[outcols2]
-        akarr2.layout._fields = [_[0] for _ in outcols]
-        struct = rec_list_swap(akarr2)
-        final = ak.with_field(akarr[cols], struct, outname)
+    def to_arrow(self, data=None):
+        """Data as an arrow array"""
+        raise NotImplementedError
 
-        return self._to_output(final).ak.unpack()
 
-    def join(
-        self,
-        other,
-        key: str,
-        colname: str = "match",
-        sort: bool = False,
-        rkey: str | None = None,
-        numba: bool = True,
-    ):
-        """DB ORM-style left join to other dataframe/series with nesting but no copy
-
-        Related records of the ``other`` table will appear as a list under the new field
-        ``colname`` for all matching keys. This is the speed and memory efficient way
-        to doing a pandas-style merge/join, which explodes out the values to a much
-        bigger memory footprint.
-
-        Parameters
-        ----------
-        other: series or table
-        key: name of the field in this table to match on
-        colname: the field that will be added to each record. This field will exist even
-            if there are no matches, in which case the list will be empty.
-        sort: if False, assumes that they key is sorted in both tables. If True, an
-            argsort is performed first, and the match is done by indexing. This may be
-            significantly slower.
-        rkey: if the name of the field to match on is different in the ``other`` table.
-        numba: the matching algorithm will go much faster using numba. However, you can
-            set this to False if you do not have numba installed.
-        """
-        from akimbo.io import join
-
-        out = join(
-            self.array, other.ak.array, key, colname=colname, sort=sort, rkey=rkey
-        )
-        return self.to_output(out)
-
-    @classmethod
-    def _create_op(cls, op):
-        """Make functions to perform all the arithmetic, logical and comparison ops"""
-
-        def op2(*args, extra=None, **kw):
-            args = list(args) + list(extra or [])
-            return op(*args, **kw)
-
-        def f(self, *args, where=None, **kw):
-            # TODO: test here is for literals, but really we want "don't know how to
-            #  array that" condition
-            extra = [_ for _ in args if isinstance(_, (str, int, float, np.number))]
-            args = (
-                to_ak_layout(_)
-                for _ in args
-                if not isinstance(_, (str, int, float, np.number))
-            )
-            out = self.transform(
-                op2,
-                *args,
-                match=numeric,
-                inmode="numpy",
-                extra=extra,
-                outtype=ak.contents.NumpyArray,
-                where=where,
-                **kw,
-            )
-            if isinstance(self._obj, self.dataframe_type):
-                return out.ak.unpack()
-            return out
-
-        return f
-
+class LazyAccessor(EagerAccessor):
     def __getattr__(self, item):
-        arr = self.array
-        if hasattr(arr, item) and callable(getattr(arr, item)):
-            func = getattr(arr, item)
-            args = ()
-        elif item in self.subaccessors:
-            return self.subaccessors[item](self)
-        elif hasattr(ak, item):
-            func = getattr(ak, item)
-            args = (arr,)
-        else:
-            raise AttributeError(item)
+        raise NotImplementedError
 
-        @functools.wraps(func)
-        def f(*others, **kwargs):
-            others = [
-                other.ak.array
-                if isinstance(other, (self.series_type, self.dataframe_type))
-                else other
-                for other in others
-            ]
-            kwargs = {
-                k: v.ak.array
-                if isinstance(v, (self.series_type, self.dataframe_type))
-                else v
-                for k, v in kwargs.items()
-            }
+    def unexplode(self):
+        raise NotImplementedError
 
-            ak_arr = func(*args, *others, **kwargs)
-            if isinstance(ak_arr, ak.Array):
-                return self.to_output(ak_arr)
-            return ak_arr
+    def pack(self):
+        raise NotImplementedError
 
-        return f
-
-    def __init_subclass__(cls, **kwargs):
-        # auto add methods to all derivative classes
-        cls._add_all()
+    def unpack(self):
+        raise NotImplementedError

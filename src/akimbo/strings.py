@@ -6,7 +6,7 @@ import awkward as ak
 import pyarrow.compute as pc
 
 from akimbo.apply_tree import dec
-from akimbo.mixin import Accessor
+from akimbo.mixin import EagerAccessor, LazyAccessor
 from akimbo.utils import match_string
 
 
@@ -26,6 +26,8 @@ def _decode(layout):
     return layout
 
 
+_decode_f = dec(_decode, match=match_bytestring, inmode="ak")
+_encode_f = dec(_encode, match=match_string, inmode="ak")
 _SA_METHODMAPPING = {
     "endswith": "ends_with",
     "isalnum": "is_alnum",
@@ -54,7 +56,6 @@ def strptime(*args, format="%FT%T", unit="us", error_is_null=True, **kw):
     out = pc.strptime(
         *args, format=format, unit=unit, error_is_null=error_is_null, **kw
     )
-    print(args[0], out, file=open("out", "w"))
     return out
 
 
@@ -67,27 +68,20 @@ class StringAccessor:
     #  - s.ak.str * N (and arguments swapped)
     #  - s.ak.str * s (where each string maps to integers for variable repeats)
 
-    def __init__(self, accessor):
-        self.accessor = accessor
-
-    _encode_f = dec(_encode, match=match_string, inmode="ak")
-
-    def encode(self, encoding: str = "utf-8"):
+    def encode(self, arr, encoding: str = "utf-8"):
         """Encode Series of strings to Series of bytes. Leaves non-strings alone."""
         if encoding.lower() not in ["utf-8", "utf8"]:
             raise NotImplementedError
-        return self._encode_f()
+        return _encode_f(arr)
 
-    _decode_f = dec(_decode, match=match_bytestring, inmode="ak")
-
-    def decode(self, encoding: str = "utf-8"):
+    def decode(self, arr, encoding: str = "utf-8"):
         """Decode Series of bytes to Series of strings. Leaves non-bytestrings alone.
 
         Validity of UTF8 is *not* checked.
         """
         if encoding.lower() not in ["utf-8", "utf8"]:
             raise NotImplementedError
-        return self._decode_f()
+        return _decode_f(arr)
 
     @staticmethod
     def method_name(attr: str) -> str:
@@ -95,22 +89,13 @@ class StringAccessor:
 
     def __getattr__(self, attr: str) -> callable:
         attr = self.method_name(attr)
-        fn = getattr(ak.str, attr)
+        return getattr(ak.str, attr)
 
-        @functools.wraps(fn)
-        def f(*args, **kwargs):
-            arr = fn(self.accessor.array, *args, **kwargs)
-            # idx = self.accessor._obj.index
-            if isinstance(arr, ak.Array):
-                return self.accessor.to_output(arr)
-            return arr
-
-        return f
-
-    strptime = dec(strptime, match=match_string)
+    strptime = staticmethod(dec(strptime, match=match_string, inmode="arrow"))
 
     def __dir__(self) -> list[str]:
-        return sorted(methods + ["strptime"])
+        return sorted(methods + ["strptime", "encode", "decode"])
 
 
-Accessor.register_accessor("str", StringAccessor)
+EagerAccessor.register_accessor("str", StringAccessor)
+LazyAccessor.register_accessor("str", StringAccessor)

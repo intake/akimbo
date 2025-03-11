@@ -27,7 +27,7 @@ class NoAttributes:
     __annotations__ = None
 
 
-def to_ak_layout(ar):
+def to_ak_layout(ar, backend=None):
     if hasattr(ar, "ak"):
         return ar.ak.array
     elif hasattr(ar, "array"):
