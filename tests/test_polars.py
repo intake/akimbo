@@ -75,6 +75,19 @@ def test_binary():
     assert s3.to_list() == [[0, 0, 0], [], [0, 0]]
 
 
+def test_str_sugar():
+    s = pl.Series([["hay", "hi", "hola"], [], ["bye", "yo"]])
+    out = s.ak.str.repeat(3)
+    out2 = s.ak.str * 3
+    expected = [["hayhayhay", "hihihi", "holaholahola"], [], ["byebyebye", "yoyoyo"]]
+    assert out.ak.tolist() == out2.ak.tolist() == expected
+
+    out = s.ak.str.join_el(s)
+    out2 = s.ak.str + s
+    expected = [["hayhay", "hihi", "holahola"], [], ["byebye", "yoyo"]]
+    assert out.ak.tolist() == out2.ak.tolist() == expected
+
+
 def test_unexplode():
     df = pl.DataFrame(
         {

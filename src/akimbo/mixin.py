@@ -176,6 +176,10 @@ class EagerAccessor(ArithmeticMixin):
     @classmethod
     def _create_op(cls, op):
         def run(self, *args, **kwargs):
+            if self.subaccessor:
+                # defer
+                op2 = op(self.subaccessors[self.subaccessor](), None)
+                return self.__getattr__(op2)(*args, **kwargs)
             args = [
                 to_ak_layout(_) if isinstance(_, (str, int, float, np.number)) else _
                 for _ in args
