@@ -57,7 +57,7 @@ class DaskAwkwardAccessor(LazyAccessor):
         )
 
     def __getattr__(self, item):
-        if self.subaccessor:
+        if self.subaccessor and isinstance(item, str):
             item = getattr(self.subaccessors[self.subaccessor], item)
         elif isinstance(item, str) and item in self.subaccessors:
             return DaskAwkwardAccessor(
