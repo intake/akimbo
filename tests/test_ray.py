@@ -150,3 +150,16 @@ def test_apply_numba(df):
     out = df.ak.apply(f2)
     result = out.ak.to_output()
     assert result.ak.tolist() == [6, None] * 100
+
+
+def test_str_sugar(df):
+    s = df.ak["y"]
+    out = s.ak.str.repeat(3)
+    out2 = s.ak.str * 3
+    expected = [["heyheyhey", None], ["hihihi", "hohoho"]] * 100
+    assert out.ak.to_output().tolist() == out2.ak.to_output().tolist() == expected
+
+    out = s.ak.str.join_el(s)
+    out2 = s.ak.str + s
+    expected = [["heyhey", None], ["hihi", "hoho"]] * 100
+    assert out.ak.to_output().tolist() == out2.ak.to_output().tolist() == expected

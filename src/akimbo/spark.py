@@ -38,7 +38,7 @@ class SparkAccessor(LazyAccessor):
             return SparkAccessor(self._obj, subaccessor=item, behavior=self._behavior)
 
         def select(*inargs, subaccessor=self.subaccessor, where=None, **kwargs):
-            if subaccessor:
+            if subaccessor and isinstance(item, str):
                 func0 = getattr(self.subaccessors[subaccessor](), item)
             elif callable(item):
                 func0 = item

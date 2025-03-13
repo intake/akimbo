@@ -71,11 +71,12 @@ def dec(
     match: Callable[[ak.contents.Content], bool] = leaf,
     outtype: Callable[[ak.contents.Content], ak.contents.Content] | None = None,
     inmode: Literal["arrow", "numpy", "ak", "other"] = "ak",
+    match_kwargs=None,
 ):
     """Make a nested/ragged version of an operation to apply throughout a tree"""
 
     @functools.wraps(func)
-    def f(arr, *args, where=None, match_kwargs=None, **kwargs):
+    def f(arr, *args, where=None, **kwargs):
         others = []
         if args:
             sig = list(inspect.signature(func).parameters)[1:]

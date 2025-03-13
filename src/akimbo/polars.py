@@ -50,7 +50,7 @@ class LazyPolarsAwkwardAccessor(LazyAccessor):
             )
 
         def select(*inargs, subaccessor=self.subaccessor, where=None, **kwargs):
-            if subaccessor:
+            if subaccessor and isinstance(item, str):
                 func0 = getattr(self.subaccessors[subaccessor](), item)
             elif callable(item):
                 func0 = item
@@ -100,18 +100,6 @@ class LazyPolarsAwkwardAccessor(LazyAccessor):
                 raise NotImplementedError
             else:
                 obj = self._obj
-            # def map_batches(
-            #     self,
-            #     function: Callable[[DataFrame], DataFrame],
-            #     *,
-            #     predicate_pushdown: bool = True,
-            #     projection_pushdown: bool = True,
-            #     slice_pushdown: bool = True,
-            #     no_optimizations: bool = False,
-            #     schema: None | SchemaDict = None,
-            #     validate_output_schema: bool = True,
-            #     streamable: bool = False,
-            # ) -> LazyFrame:
             arrow_type = polars_to_arrow_schema(obj.collect_schema())
             arr = pa.table([[]] * len(arrow_type), schema=arrow_type)
             out1 = f(pl.from_arrow(arr))

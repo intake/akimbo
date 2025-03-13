@@ -3,6 +3,7 @@ from __future__ import annotations
 import functools
 
 import awkward as ak
+import pyarrow as pa
 import pyarrow.compute as pc
 
 from akimbo.apply_tree import dec
@@ -59,6 +60,16 @@ def strptime(*args, format="%FT%T", unit="us", error_is_null=True, **kw):
     return out
 
 
+def repeat(arr, count):
+    return pc.binary_repeat(arr, count)
+
+
+def concat(arr, arr2, sep=""):
+    return pc.binary_join_element_wise(
+        arr.cast(pa.string()), arr2.cast(pa.string()), sep
+    )
+
+
 class StringAccessor:
     """String operations on nested/var-length data"""
 
@@ -92,6 +103,14 @@ class StringAccessor:
         return getattr(ak.str, attr)
 
     strptime = staticmethod(dec(strptime, match=match_string, inmode="arrow"))
+    repeat = staticmethod(dec(repeat, match=match_string, inmode="arrow"))
+    join_el = staticmethod(dec(concat, match=match_string, inmode="arrow"))
+
+    def __add__(self, *_):
+        return dec(concat, match=match_string, inmode="arrow")
+
+    def __mul__(self, *_):
+        return dec(repeat, match=match_string, inmode="arrow")
 
     def __dir__(self) -> list[str]:
         return sorted(methods + ["strptime", "encode", "decode"])
