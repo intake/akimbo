@@ -7,9 +7,16 @@ analysis of nested, non-tabular data in
 workflows. This will be much faster and memory efficient than iterating
 over python dicts/lists, which quickly becomes unfeasible for big data.
 
-When you import ``kimbo``, a new ``.ak`` accessor will appear on your
+When you import ``akimbo``, a new ``.ak`` accessor will appear on your
 dataframes, allowing the fast vectorized processing of "awkward" data
-(nested structures and variable-length ragged lists) held in columns.
+(nested structures and variable-length ragged lists) held in columns, e.g.,
+for pandas
+
+.. code-block::
+
+    # adds accessor for all pandas dataframes and series
+    import akimbo.pandas
+    df.ak
 
 Features
 --------
@@ -22,10 +29,11 @@ identical syntax:
 
 - pandas
 - dask.dataframe
-- polars
+- polars (eager and lazy, but not GPU)
 - cuDF
 - ray dataset
 - pyspark
+- duckDB
 
 
 numpy-like API
@@ -103,6 +111,8 @@ accessor namespaces that appear under ``.ak`` similar to the the builtin
 One experimental proof-of-concept is `akimbo-ip`_, which provides fast vectorised
 manipulations of IPv4/6 addresses and networks; and by using this through
 the ``akimbo`` system, you can apply these methods to ragged/nested dataframes.
+We may consider other domain specific functionality appropriate for
+nested/variable-length data structures, such as spatial operations on polygons.
 
 .. _akimbo-ip: https://github.com/intake/akimbo-ip
 
@@ -112,6 +122,7 @@ the ``akimbo`` system, you can apply these methods to ragged/nested dataframes.
 
    install.rst
    quickstart.ipynb
+   explanation.py
 
 .. toctree::
    :maxdepth: 1
