@@ -27,7 +27,9 @@ API and workflows across all of them.
 
 Where there is no accessor registration mechanism, ``akimbo`` uses
 "patching" to attach the ``.ak`` accessor to the target dataframe
-objects.
+objects. This always happens by importing the specific submodule for
+the given dataframe library, so others will not be imported/affected
+by ``akimbo``.
 
 Lazy versus Eager
 -----------------

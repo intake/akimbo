@@ -57,15 +57,12 @@ ragged arrays while maintaining the original layout
 
     series.ak.abs()  # absolute for all numerical values
     series.ak.sum(axis=3)  # sum over deeply nested level
+    np.sin(series.ak)  # use a ufunc, which applies to any nested numerical data
     series.ak + 1  # numpy-like broadcasting into deeper levels
 
-You can even apply string and datetime operations to ragged/nested
-arrays of values, and they will only affect the appropriate parts of the structure
-without changing the layout.
+Using the ``ak.transform`` and ``ak.apply`` methods gives you close control over
+which part of the data is affected and how, for power users.
 
-.. code-block:: python
-
-    series.ak.str.upper()
 
 CPU/GPU numba support
 ~~~~~~~~~~~~~~~~~~~~~
@@ -107,6 +104,17 @@ Sub-accessors
 As an alternative to the object-oriented behaviours, developers may create
 accessor namespaces that appear under ``.ak`` similar to the the builtin
 ``.ak.str`` (strings ops) snd ``.ak.dt`` (datetime ops) included already.
+Such subaccessors provide methods that can be mapped over specific
+data types.
+
+You can apply string and datetime operations to ragged/nested
+arrays of values, and they will only affect the appropriate parts of the structure
+without changing the layout.
+
+.. code-block:: python
+
+    series.ak.str.upper()  # change all strings to upper case throughout the data
+
 
 One experimental proof-of-concept is `akimbo-ip`_, which provides fast vectorised
 manipulations of IPv4/6 addresses and networks; and by using this through
