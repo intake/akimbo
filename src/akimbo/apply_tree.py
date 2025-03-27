@@ -74,9 +74,10 @@ def dec(
     match_kwargs=None,
 ):
     """Make a nested/ragged version of an operation to apply throughout a tree"""
+    match_kw = match_kwargs
 
     @functools.wraps(func)
-    def f(arr, *args, where=None, **kwargs):
+    def f(arr, *args, where=None, match_kwargs=None, **kwargs):
         others = []
         if args:
             sig = list(inspect.signature(func).parameters)[1:]
@@ -105,7 +106,7 @@ def dec(
             outtype=outtype,
             inmode=inmode,
             others=others,
-            match_kwargs=match_kwargs,
+            match_kwargs=match_kwargs or match_kw,
             **kwargs,
         )
         if where:
