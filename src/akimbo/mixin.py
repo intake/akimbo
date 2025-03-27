@@ -311,7 +311,7 @@ class EagerAccessor(ArithmeticMixin):
 
     def pack(self):
         """Make a single complex series out of the columns of a dataframe"""
-        if not self.is_dataframe(self._obj):
+        if not isinstance(self._obj, self.dataframe_type):
             raise ValueError("Can only pack on a dataframe")
         out = {}
         for k in self._obj.columns:
