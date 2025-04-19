@@ -12,7 +12,8 @@ in dataframes, using the ``.ak`` accessor.
 
 - numpy-like API for slicing and accessing data deep in nested structures
 - apply any function, ufunc or aggregation at any level
-- use with different backends: pandas, polars, dask-dataframe and cuDF
+- use with different backends: pandas, polars (lazy and eager),
+  dask-dataframe, pyspark, duckDB and cuDF
   exactly the same way (more backends may come in the future)
 - CPU and GPU processing and support for ``numba``-jit
 - attach object-like behaviours to your record (sub)structures
