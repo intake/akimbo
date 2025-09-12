@@ -146,7 +146,7 @@ nested/variable-length data structures, such as spatial operations on polygons.
    api.rst
 
 These docs pages collect anonymous tracking data using goatcounter, and the
-dashboard is available to the public: https://gcsfs.goatcounter.com/ .
+dashboard is available to the public: https://akimbo.goatcounter.com/ .
 
 
 .. raw:: html
