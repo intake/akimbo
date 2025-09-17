@@ -110,7 +110,7 @@ To run the tests:
 
 .. code-block:: shell
 
-   $ pytest -v
+   $ pytest -v --cov akimbo
 
 In addition, if you wish to test the CUDA functionality, you will need a functional
 CUDA build toolchain - see the example environment in docs/example/cuda_env.yaml , as
