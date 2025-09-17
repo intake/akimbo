@@ -130,7 +130,7 @@ nested/variable-length data structures, such as spatial operations on polygons.
 
    install.rst
    quickstart.ipynb
-   explanation.py
+   explanation.rst
 
 .. toctree::
    :maxdepth: 1
@@ -144,6 +144,13 @@ nested/variable-length data structures, such as spatial operations on polygons.
    :caption: API Reference
 
    api.rst
+
+.. toctree::
+   :maxdepth: 1
+   :caption: other
+
+   code-of-conduct.rst
+   contributing.rst
 
 These docs pages collect anonymous tracking data using goatcounter, and the
 dashboard is available to the public: https://akimbo.goatcounter.com/ .
