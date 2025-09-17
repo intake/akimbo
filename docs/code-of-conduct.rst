@@ -122,5 +122,5 @@ the `Contributor Covenant`_ and the `Django`_ project.
 
 .. raw:: html
 
-    <script data-goatcounter="https://intake.goatcounter.com/count"
+    <script data-goatcounter="https://akimbo.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
