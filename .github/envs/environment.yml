@@ -14,6 +14,6 @@ dependencies:
   - awkward
   - distributed
   - pip
-  - ray
+  - ray-data
   - pip:
       - git+https://github.com/dask-contrib/dask-awkward
